@@ -1,25 +1,25 @@
-//Gislersoft(R)
-//Libreria para el uso del mouse en cualquier tipo de modo
-//grafico ¢ texto
+// Gislersoft(R)
+// Libreria para el uso del mouse en cualquier tipo de modo
+// grafico ï¿½ texto
 #include <dos.h>
 
-/* NOTA:    Valores que retorna la funci¢ boton():
-			   BOTONES DEL MOUSE
-	-----------------------------------------------
-	|  Valor:  |  Izquierda: |  medio  |  Derecha|
-	-----------------------------------------------
-	|    0     |     NO      |    NO    |   NO    |
-	|    1     |     SI      |    NO    |   NO    |
-	|    2     |     NO      |    NO    |   SI    |
-	|    3     |     SI      |    NO    |   SI    |
-	|    4     |     NO      |    SI    |   NO    |
-	|    5     |     SI      |    SI    |   NO    |
-	|    6     |     NO      |    SI    |   SI    |
-	|    7     |     SI      |    SI    |   SI    |
-	-----------------------------------------------
+/* NOTA:    Valores que retorna la funciï¿½ boton():
+         BOTONES DEL MOUSE
+  -----------------------------------------------
+  |  Valor:  |  Izquierda: |  medio  |  Derecha|
+  -----------------------------------------------
+  |    0     |     NO      |    NO    |   NO    |
+  |    1     |     SI      |    NO    |   NO    |
+  |    2     |     NO      |    NO    |   SI    |
+  |    3     |     SI      |    NO    |   SI    |
+  |    4     |     NO      |    SI    |   NO    |
+  |    5     |     SI      |    SI    |   NO    |
+  |    6     |     NO      |    SI    |   SI    |
+  |    7     |     SI      |    SI    |   SI    |
+  -----------------------------------------------
 */
 
-union REGS rin,rout;
+union REGS rin, rout;
 
 /*
 -----------------------------------------------------------------------------
@@ -28,9 +28,9 @@ union REGS rin,rout;
 */
 int initmouse(void)
 {
-  rin.x.ax=0;
-  int86(0x33,&rin,&rout);
-  return (rout.x.ax);            /* Retorna -1 si el mouse se ha instalado */																 /*         0 si no instalado*/
+  rin.x.ax = 0;
+  int86(0x33, &rin, &rout);
+  return (rout.x.ax); /* Retorna -1 si el mouse se ha instalado */ /*         0 si no instalado*/
 }
 
 /*
@@ -40,8 +40,8 @@ int initmouse(void)
 */
 void mouseoff(void)
 {
-  rin.x.ax=2;
-  int86(0x33,&rin,&rout);
+  rin.x.ax = 2;
+  int86(0x33, &rin, &rout);
 }
 
 /*
@@ -51,33 +51,33 @@ void mouseoff(void)
 */
 void mouseon(void)
 {
-  rin.x.ax=1;
-  int86(0x33,&rin,&rout);
+  rin.x.ax = 1;
+  int86(0x33, &rin, &rout);
 }
 
 /*
 -----------------------------------------------------------------------------
-  pos_X: Retorna la posici¢n horizontal del mouse (depende de la resoluci¢n del
-    texto de los gr ficos).
+  pos_X: Retorna la posiciï¿½n horizontal del mouse (depende de la resoluciï¿½n del
+    texto de los grï¿½ficos).
 -----------------------------------------------------------------------------
 */
 int pos_x(void)
 {
-  rin.x.ax=3;
-  int86(0x33,&rin,&rout);
-  return(rout.x.cx);
+  rin.x.ax = 3;
+  int86(0x33, &rin, &rout);
+  return (rout.x.cx);
 }
 
 /*
 -----------------------------------------------------------------------------
-  pos_Y: Retorna la posici¢n vertical del mouse.
+  pos_Y: Retorna la posiciï¿½n vertical del mouse.
 -----------------------------------------------------------------------------
 */
 int pos_y(void)
 {
-  rin.x.ax=3;
-  int86(0x33,&rin,&rout);
-  return(rout.x.dx);
+  rin.x.ax = 3;
+  int86(0x33, &rin, &rout);
+  return (rout.x.dx);
 }
 
 /*
@@ -88,20 +88,20 @@ int pos_y(void)
 */
 int boton(void)
 {
-  rin.x.ax=3;
-  int86(0x33,&rin,&rout);
-  return(rout.x.bx);
+  rin.x.ax = 3;
+  int86(0x33, &rin, &rout);
+  return (rout.x.bx);
 }
 
 /*
 -----------------------------------------------------------------------------
-  mouse_xy: Coloca el cursor del mouse en la posici¢ (x,y).
+  mouse_xy: Coloca el cursor del mouse en la posiciï¿½ (x,y).
 -----------------------------------------------------------------------------
 */
 void mouse_xy(int x, int y)
 {
-  rin.x.ax=4;
-  rin.x.cx=x;
-  rin.x.dx=y;
-  int86(0x33,&rin,&rout);
+  rin.x.ax = 4;
+  rin.x.cx = x;
+  rin.x.dx = y;
+  int86(0x33, &rin, &rout);
 }
