@@ -1,11 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <conio.h>
-#include <vgapoo.h>
-#include <fnt13h2.h>
-#include <spr13h.h>
-#include <ratoli.h>
 #include <ctype.h>
+
+/*===========================[Archivos Cabecera Custom]============================*/
+#include "vgapoo.h"
+#include "fnt13h.h"
+#include "spr13h.h"
+#include "ratoli.h"
 
 /*=======================[Definicion de constantes]=========================*/
 #define MAXCHAROBJ 9 // Maximo de caracteres para el nombre de un objeto
@@ -203,8 +205,7 @@ void Creador::dibujarMenu2(Graph &h, Font &l)
 	else
 		h.box(h.pv1, 165, 0, 181, 16, 15);
 
-
- //-----------------------------------------------
+	//-----------------------------------------------
 	l.putstr(h.pv1, 165, 46, "MODIF", h, 3, 15);
 	aux = modificado.tiles[0] - 1; // El primer til
 	if (aux != -1)
@@ -226,25 +227,34 @@ void Creador::dibujarMenu2(Graph &h, Font &l)
 
 	if ((x_center >= 0) && (y_center >= 0))
 	{
-		if ((xmouse >= 0 && xmouse <=160) && (ymouse >= 0 && ymouse <= 160)) {
-			if ((x_center >= 0) && (y_center >= 0)) {
-				for(int i=0;i<5;i++){
-					for(int j=0;j<5;j++){
-						int tile_x_index = x_center + (1*i) - 2;
-						int tile_y_index = y_center + (1*j) - 2;
+		if ((xmouse >= 0 && xmouse <= 160) && (ymouse >= 0 && ymouse <= 160))
+		{
+			if ((x_center >= 0) && (y_center >= 0))
+			{
+				for (int i = 0; i < 5; i++)
+				{
+					for (int j = 0; j < 5; j++)
+					{
+						int tile_x_index = x_center + (1 * i) - 2;
+						int tile_y_index = y_center + (1 * j) - 2;
 
 						if ((tile_x_index >= 0 && tile_x_index < 40) &&
 							(tile_y_index >= 0 && tile_y_index < 40))
 						{
 							aux = mapa[tile_x_index][tile_y_index].tiles[0] - 1; // El primer til
-							if (aux != -1 && recursos.frm[aux].img!=NULL) {
-								h.putframe(h.pv1, start_x + (i*16), 0 + (j*16), 16, recursos.frm[aux].img, 0);
+							if (aux != -1 && recursos.frm[aux].img != NULL)
+							{
+								h.putframe(h.pv1, start_x + (i * 16), 0 + (j * 16), 16, recursos.frm[aux].img, 0);
 								// h.box(h.pv1, start_x + (i*16), 0 + (j*16), 271 + (i*16), 16 + (j*16), 109);
-							} else {
-								h.fillbox(h.pv1, start_x + (i*16), 0 + (j*16), 271 + (i*16), 16 + (j*16), 0);
 							}
-						} else {
-							h.fillbox(h.pv1, start_x + (i*16), 0 + (j*16), 271 + (i*16), 16 + (j*16), 0);
+							else
+							{
+								h.fillbox(h.pv1, start_x + (i * 16), 0 + (j * 16), 271 + (i * 16), 16 + (j * 16), 0);
+							}
+						}
+						else
+						{
+							h.fillbox(h.pv1, start_x + (i * 16), 0 + (j * 16), 271 + (i * 16), 16 + (j * 16), 0);
 						}
 					}
 				}
@@ -254,7 +264,7 @@ void Creador::dibujarMenu2(Graph &h, Font &l)
 		}
 	}
 
-	  //-----------------------------------------------
+	//-----------------------------------------------
 }
 /*------------------------------*/
 void Creador::dibujarMenu3(Graph &h, Sprite &s)
@@ -315,7 +325,6 @@ int Creador::comando()
 			return 17;
 		if ((x >= 128) && (x <= 153) && (y >= 178) && (y <= 186))
 			return 18;
-
 	}
 
 	return 0;
@@ -370,8 +379,7 @@ void Creador::over(Graph &h, Font &l)
 	if ((x >= 165) && (x <= 181) && (y >= 28) && (y <= 44))
 		h.box(h.pv1, 165, 28, 181, 44, 109);
 	if ((x >= 165) && (x <= 181) && (y >= 58) && (y <= 74))
- 		h.box(h.pv1, 165, 58, 181, 74, 109);
-
+		h.box(h.pv1, 165, 58, 181, 74, 109);
 
 	if ((x >= 165) && (x <= 181) && (y >= 58) && (y <= 74))
 	{
@@ -620,7 +628,7 @@ void Creador::ejecutar(Graph &h, Sprite &s, int com)
 		cout << "\n	[GUARDAR ARCHIVO]";
 		cout << "\n\n			Nombre del archivo:";
 		cin >> aux3;
-		if (guardarArchivo(aux3) == 0)
+		if (guardarArchivo(strcat("MAPS/", aux3)) == 0)
 		{
 			cout << "No se pudo guardar!";
 			getch();
@@ -639,7 +647,7 @@ void Creador::ejecutar(Graph &h, Sprite &s, int com)
 		cout << "\n	[ABRIR ARCHIVO]";
 		cout << "\n\n			Nombre del archivo:";
 		cin >> aux3;
-		if (abrirArchivo(aux3) == 0)
+		if (abrirArchivo(strcat("MAPS/", aux3)) == 0)
 		{
 			cout << "No se pudo abrir!";
 			getch();
@@ -1034,14 +1042,14 @@ void main()
 		Error("No hay suficiente memoria.");
 	if ((iconos.status() == 0))
 		Error("No hay suficiente memoria.");
-	if (iconos.cargarSprite("ICO_TIL.PCX", g) == 0)
+	if (iconos.cargarSprite("IMG/ICO_TIL.PCX", g) == 0)
 		Error("No se pudo abrir ICO_TIL.PCX");
 
 	if (c.recursos.status() == 0)
 	{
 		Error("No hay suficiente memoria!");
 	}
-	if (c.recursos.cargarSprite("16x16.pcx", g) == 0)
+	if (c.recursos.cargarSprite("IMG/16x16.pcx", g) == 0)
 	{
 		Error("No se pudo cargar el archivo!");
 	}
