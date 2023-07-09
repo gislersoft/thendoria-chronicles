@@ -1029,7 +1029,7 @@ int main()
 	g.clr(g.pv1, 0);
 	explo.actualizarPosicion(20, 18); // Cuando empieza debe estar paradosobre un objeto neutro y estatico
 	explo.actualizarBrujula(SUR);
-	if (explo.cargarMapa("MAPS/villa2.txt") == 0)
+	if (explo.cargarMapa("MAPS/casa.txt") == 0)
 	{
 		printf("Error");
 		exit(1);
