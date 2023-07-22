@@ -635,17 +635,17 @@ void Creador::ejecutar(Graph &h, Sprite &s, int com)
 	case 1:
 		h.modo_video(TEXTO);
 		clrscr();
-		cout << "\n	[GUARDAR ARCHIVO]";
-		cout << "\n\n			Nombre del archivo:";
+		printf("\n	[GUARDAR ARCHIVO]");
+		printf("\n\n			Nombre del archivo:");
 		cin >> aux3;
 		if (guardarArchivo(strcat("MAPS/", aux3)) == 0)
 		{
-			cout << "No se pudo guardar!";
+			printf("No se pudo guardar!");
 			getch();
 		}
 		else
 		{
-			cout << "Archivo guardado!";
+			printf("Archivo guardado!");
 			getch();
 		}
 		h.modo_video(GRAFICO);
@@ -654,17 +654,17 @@ void Creador::ejecutar(Graph &h, Sprite &s, int com)
 	case 2:
 		h.modo_video(TEXTO);
 		clrscr();
-		cout << "\n	[ABRIR ARCHIVO]";
-		cout << "\n\n			Nombre del archivo:";
+		printf("\n	[ABRIR ARCHIVO]");
+		printf("\n\n			Nombre del archivo:");
 		cin >> aux3;
 		if (abrirArchivo(strcat("MAPS/", aux3)) == 0)
 		{
-			cout << "No se pudo abrir!";
+			printf("No se pudo abrir!");
 			getch();
 		}
 		else
 		{
-			cout << "Archivo abierto satisfactoriamente!";
+			printf("Archivo abierto satisfactoriamente!");
 			getch();
 		}
 		h.modo_video(GRAFICO);
@@ -676,17 +676,17 @@ void Creador::ejecutar(Graph &h, Sprite &s, int com)
 	case 4:
 		h.modo_video(TEXTO);
 		clrscr();
-		cout << "\n	[TIPO ACCION]";
-		cout << "\n\n	[0] PREGUNTA";
-		cout << "\n	[1] ACCION";
-		cout << "\n	[2] NEUTRO";
-		cout << "\n	[3] TELEACCION";
-		cout << "\n	[4] SALIDA";
-		cout << "\n\n			Opcion:";
+		printf("\n	[TIPO ACCION]");
+		printf("\n\n	[0] PREGUNTA");
+		printf("\n	[1] ACCION");
+		printf("\n	[2] NEUTRO");
+		printf("\n	[3] TELEACCION");
+		printf("\n	[4] SALIDA");
+		printf("\n\n			Opcion:");
 		cin >> op;
 		if (op < 0 && op > 4)
 		{
-			cout << "\nOpcion no valida! ...";
+			printf("\nOpcion no valida! ...");
 			getch();
 		}
 		else
@@ -694,7 +694,7 @@ void Creador::ejecutar(Graph &h, Sprite &s, int com)
 			modificado.accion = (tipoAccion)op;
 			if (op == 0)
 			{
-				cout << "\n\n	Digite el numero de parrafos del guion (maximo 255):";
+				printf("\n\n	Digite el numero de parrafos del guion (maximo 255):");
 				cin >> op;
 				modificado.x = op;
 			}
@@ -705,15 +705,15 @@ void Creador::ejecutar(Graph &h, Sprite &s, int com)
 	case 5:
 		h.modo_video(TEXTO);
 		clrscr();
-		cout << "\n	[TIPO ESTADO]";
+		printf("\n	[TIPO ESTADO]");
 		printf("\n\n	[0] ESTATICO");
-		cout << "\n	[1] ANIMADO";
-		cout << "\n	[2] SUICHE";
-		cout << "\n\n			Opcion:";
+		printf("\n	[1] ANIMADO");
+		printf("\n	[2] SUICHE");
+		printf("\n\n			Opcion:");
 		cin >> op;
 		if (op < 0 && op > 3)
 		{
-			cout << "\nOpcion no valida! ...";
+			printf("\nOpcion no valida! ...");
 			getch();
 		}
 		else
@@ -726,14 +726,14 @@ void Creador::ejecutar(Graph &h, Sprite &s, int com)
 	case 6:
 		h.modo_video(TEXTO);
 		clrscr();
-		cout << "\n	[IMPORTANTE]";
-		cout << "\n\n	[0] FALSE";
-		cout << "\n	[1] TRUE";
-		cout << "\n\n			Opcion:";
+		printf("\n	[IMPORTANTE]");
+		printf("\n\n	[0] FALSE");
+		printf("\n	[1] TRUE");
+		printf("\n\n			Opcion:");
 		cin >> op;
 		if (op < 0 && op > 1)
 		{
-			cout << "\nOpcion no valida! ...";
+			printf("\nOpcion no valida! ...");
 			getch();
 		}
 		else
@@ -746,14 +746,14 @@ void Creador::ejecutar(Graph &h, Sprite &s, int com)
 	case 7:
 		h.modo_video(TEXTO);
 		clrscr();
-		cout << "\n	[SOLIDO]";
-		cout << "\n\n	[0] FALSE";
-		cout << "\n	[1] TRUE";
-		cout << "\n\n			Opcion:";
+		printf("\n	[SOLIDO]");
+		printf("\n\n	[0] FALSE");
+		printf("\n	[1] TRUE");
+		printf("\n\n			Opcion:");
 		cin >> op;
 		if (op < 0 && op > 1)
 		{
-			cout << "\nOpcion no valida! ...";
+			printf("\nOpcion no valida! ...");
 			getch();
 		}
 		else
@@ -767,14 +767,14 @@ void Creador::ejecutar(Graph &h, Sprite &s, int com)
 	case 8:
 		h.modo_video(TEXTO);
 		clrscr();
-		cout << "\n	[CICLICO]";
-		cout << "\n\n	[0] FALSE";
-		cout << "\n	[1] TRUE";
-		cout << "\n\n			Opcion:";
+		printf("\n	[CICLICO]");
+		printf("\n\n	[0] FALSE");
+		printf("\n	[1] TRUE");
+		printf("\n\n			Opcion:");
 		cin >> op;
 		if (op < 0 && op > 1)
 		{
-			cout << "\nOpcion no valida! ...";
+			printf("\nOpcion no valida! ...");
 			getch();
 		}
 		else
@@ -787,17 +787,18 @@ void Creador::ejecutar(Graph &h, Sprite &s, int com)
 	case 9:
 		h.modo_video(TEXTO);
 		int nveces;
-		cout << "\n	[TILES]";
-		cout << "\n\n	(Max 3 tiles por objeto)";
-		cout << "\n	Digite el numero de tiles a ingresar:";
+		printf("\n	[TILES]");
+		printf("\n\n	(Max 3 tiles por objeto)");
+		printf("\n	Digite el numero de tiles a ingresar:");
 		cin >> nveces;
 		for (int i = 0; i < 3; i++)
 			modificado.tiles[i] = 0;
 		for (i = 0; i < nveces; i++)
 		{
 			h.modo_video(TEXTO);
-			cout << "Escoja el til numero " << i + 1 << " con el mouse.";
-			cout << "\nPresione una tecla para continuar...";
+			clrscr();
+			printf("\nEscoja el tile numero %d con el mouse.", i + 1);
+			printf("\nPresione una tecla para continuar...");
 			getch();
 			h.modo_video(GRAFICO);
 			h.pal();
@@ -811,9 +812,6 @@ void Creador::ejecutar(Graph &h, Sprite &s, int com)
 				h.volcar(h.vga, h.pv1);
 			}
 			modificado.tiles[i] = aux1 + aux2 * 20 + 1;
-			h.modo_video(TEXTO);
-			cout << aux1 + aux2 * 20 + 1;
-			getch();
 			h.modo_video(GRAFICO);
 			h.pal();
 		}
@@ -822,10 +820,10 @@ void Creador::ejecutar(Graph &h, Sprite &s, int com)
 	case 10:
 		h.modo_video(TEXTO);
 		clrscr();
-		cout << "\n	[POSICION]";
-		cout << "\n\n	Digite x:";
+		printf("\n	[POSICION]");
+		printf("\n\n	Digite x:");
 		cin >> aux1;
-		cout << "\n	Digite y:";
+		printf("\n	Digite y:");
 		cin >> aux2;
 		if (aux1 >= 0 && aux1 < 40)
 		{
@@ -836,13 +834,13 @@ void Creador::ejecutar(Graph &h, Sprite &s, int com)
 			}
 			else
 			{
-				cout << "Punto fuera del rango.";
+				printf("Punto fuera del rango.");
 				getch();
 			}
 		}
 		else
 		{
-			cout << "Punto fuera del rango.";
+			printf("Punto fuera del rango.");
 			getch();
 		}
 
@@ -852,12 +850,12 @@ void Creador::ejecutar(Graph &h, Sprite &s, int com)
 	case 11:
 		h.modo_video(TEXTO);
 		clrscr();
-		cout << "\n	[NOMBRE]";
-		cout << "\n\n	Digite el nombre del objeto (Max 8 Caracteres):";
+		printf("\n	[NOMBRE]");
+		printf("\n\n	Digite el nombre del objeto (Max 8 Caracteres):");
 		cin >> aux3;
 		if (strlen(aux3) > 8)
 		{
-			cout << "\nDigito mas de 8 caracteres.";
+			printf("\nDigito mas de 8 caracteres.");
 			getch();
 		}
 		else
@@ -874,13 +872,13 @@ void Creador::ejecutar(Graph &h, Sprite &s, int com)
 	case 12:
 		h.modo_video(TEXTO);
 		clrscr();
-		cout << "\n	[ARCHIVO ASOCIADO]";
-		cout << "\n\n	(Max 9 caracteres)";
-		cout << "\n	Digite el archivo sin extensiones:";
+		printf("\n	[ARCHIVO ASOCIADO]");
+		printf("\n\n	(Max 9 caracteres)");
+		printf("\n	Digite el archivo sin extensiones:");
 		cin >> aux3;
 		if (strlen(aux3) > 9)
 		{
-			cout << "\nDigito mas de 9 caracteres.";
+			printf("\nDigito mas de 9 caracteres.");
 			getch();
 		}
 		else
@@ -1038,7 +1036,7 @@ byte	getpixel( unsigned char far *px, int x, int y);
 */
 void Error(char *n)
 {
-	cout << n;
+	printf(n);
 	exit(1);
 }
 void main()
