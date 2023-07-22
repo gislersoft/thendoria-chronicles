@@ -91,6 +91,7 @@ public:
 	void imprimirEstado(Graph &h, Font &l, int op, int x, int y);
 	void imprimirBooleano(Graph &h, Font &l, int op, int x, int y);
 	void dibujarCelda(Graph &h, int x, int y, int til);
+	void dibujarPaleta(Graph &h, Font &l);
 	int guardarArchivo(char *nombre);
 	int abrirArchivo(char *nombre);
 	int til_i();
@@ -144,6 +145,15 @@ void Creador::dibujarMapa(Graph &h)
 				h.box(h.pv1, aux1, aux2, aux1 + 4, aux2 + 4, 15);
 		}
 	}
+}
+void Creador::dibujarPaleta(Graph &h, Font &l)
+{
+	unsigned char pixelColor = h.getpixel(h.pv1, xmouse, ymouse);
+	h.fillbox(h.pv1, 50, 164, 55, 169, pixelColor);
+	char *numPixel = "***";
+	l.toString(pixelColor, numPixel);
+	l.putstr(h.pv1, 1, 164, "PIXEL*COLOR:", h, 0, 15);
+	l.putstr(h.pv1, 70, 164, numPixel, h, 2, 15);
 }
 void Creador::dibujarCelda(Graph &h, int x, int y, int til)
 {
@@ -1067,6 +1077,7 @@ void main()
 		c.dibujarMenu2(g, f);
 		c.dibujarMenu3(g, iconos);
 		c.over(g, f);
+		c.dibujarPaleta(g,f);
 		c.puntero(g, iconos);
 		g.volcar(g.vga, g.pv1);
 		c.ejecutar(g, iconos, c.comando());
