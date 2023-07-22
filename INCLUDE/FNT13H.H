@@ -452,7 +452,7 @@ void Font::dialbox(int x, int y, char *n, int a, int b, Graph &h, int poner)
 	leerparrafo(n, a, b);
 
 	h.box(h.pv1, x + 1, y + 1, x + 161, y + 39, 226);
-	h.fillbox(h.pv1, x, y, x + 160, y + 38, 230);
+	h.fillbox(h.pv1, x, y, x + 160, y + 38, 80);
 	h.box(h.pv1, x, y, x + 160, y + 38, 15);
 	for (int i = 0; i < 5; i++)
 	{
@@ -460,13 +460,13 @@ void Font::dialbox(int x, int y, char *n, int a, int b, Graph &h, int poner)
 		switch (i)
 		{
 		case 0:
-			putstr(h.pv1, x + 3, y + 3 + 1, texto[i].linea, h, 0, 44);
+			// putstr(h.pv1, x + 3, y + 3 + 1, texto[i].linea, h, 0, 44);
 			putstr(h.pv1, x + 3, y + 3, texto[i].linea, h, 0, 181);
 			break;
 		case 4:
 			if (poner == 1)
 			{
-				putstr(h.pv1, x + 3, y + 3 + 1, texto[i].linea, h, 0, 44);
+				// putstr(h.pv1, x + 3, y + 3 + 1, texto[i].linea, h, 0, 44);
 				putstr(h.pv1, x + 3, y + 3, texto[i].linea, h, 0, 89);
 			}
 			break;
