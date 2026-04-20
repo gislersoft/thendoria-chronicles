@@ -137,13 +137,14 @@ public:
 	~BattleMode();
 	//-----------------
 
+	void initValues();
 	void Error(char *texto, int tipo_error);
 	int demorar(clock_t s, float t);
 	void cargar_sprite_buffer(Sprite &m, char *nombre, Graph &h);
 	void loadBatalla(Graph &h);
-	void modoBatalla(Graph &g);
+	void modoBatalla(Graph &g, Font &f);
 };
-BattleMode::initValues() {
+void BattleMode::initValues() {
 	op = 1;
 	op2 = 1;
 	op3 = 1;
@@ -171,7 +172,7 @@ BattleMode::~BattleMode()
 {
 }
 // Escribe un mensaje de erro con el tipo de error generado
-BattleMode::Error(char *texto, int tipo_error)
+void BattleMode::Error(char *texto, int tipo_error)
 {
 	cout << "Error:" << texto;
 	switch (tipo_error)
@@ -190,52 +191,49 @@ BattleMode::Error(char *texto, int tipo_error)
 	exit(1);
 }
 // Retorna 1 cuando pasan t segundos
-BattleMode::demorar(clock_t s, float t)
+int BattleMode::demorar(clock_t s, float t)
 {
 	if (((clock() - s) / CLK_TCK) > t)
 		return 1;
 	return 0;
 }
 // Carga un sprite desde un archivo
-BattleMode::cargar_sprite_buffer(Sprite &m, char *nombre, Graph &h)
+void BattleMode::cargar_sprite_buffer(Sprite &m, char *nombre, Graph &h)
 {
 	if ((m.status() == 0))
 		Error(nombre, 1);
 	if (m.cargarSprite(nombre, h) == 0)
 		Error(nombre, 2);
 }
-BattleMode::loadBatalla(Graph &h) {
+void BattleMode::loadBatalla(Graph &h) {
 	bat = Batalla(6, 3); // Crea una batalla con X monstruos y Y personajes
 	bat.CargarPersonajes();
 	bat.CargarMonstruos();
 
-	for (int l = 0; l < bat.nmonstruos; l++)
-		bat.string_mons[l].cad = "PLANTA.PCX";
-
 	/*
 	 Se cargan los monstruos de acuerdo a los archivos
-     especificados en bat.string_mons
+	 especificados para la batalla actual
 	*/
 	switch (bat.nmonstruos)
 	{
 	case 6:
 		enemigos[5].crear(7, 60, 0.13);
-		cargar_sprite_buffer(enemigos[5], bat.string_mons[5].cad, g);
+		cargar_sprite_buffer(enemigos[5], "PLANTA.PCX", h);
 	case 5:
 		enemigos[4].crear(7, 60, 0.13);
-		cargar_sprite_buffer(enemigos[4], bat.string_mons[4].cad, g);
+		cargar_sprite_buffer(enemigos[4], "PLANTA.PCX", h);
 	case 4:
 		enemigos[3].crear(7, 60, 0.13);
-		cargar_sprite_buffer(enemigos[3], bat.string_mons[3].cad, g);
+		cargar_sprite_buffer(enemigos[3], "PLANTA.PCX", h);
 	case 3:
 		enemigos[2].crear(7, 60, 0.13);
-		cargar_sprite_buffer(enemigos[2], bat.string_mons[2].cad, g);
+		cargar_sprite_buffer(enemigos[2], "PLANTA.PCX", h);
 	case 2:
 		enemigos[1].crear(7, 60, 0.13);
-		cargar_sprite_buffer(enemigos[1], bat.string_mons[1].cad, g);
+		cargar_sprite_buffer(enemigos[1], "PLANTA.PCX", h);
 	case 1:
 		enemigos[0].crear(7, 60, 0.13);
-		cargar_sprite_buffer(enemigos[0], bat.string_mons[0].cad, g);
+		cargar_sprite_buffer(enemigos[0], "PLANTA.PCX", h);
 	}
 
 	// Se cargan los sprites de los protagonistas
@@ -243,13 +241,13 @@ BattleMode::loadBatalla(Graph &h) {
 	{
 		case 3:
 			personajes[2].crear(8, 53, 0.2);
-			cargar_sprite_buffer(personajes[2], "PROF.PCX", g);
+			cargar_sprite_buffer(personajes[2], "PROF.PCX", h);
 		case 2:
 			personajes[1].crear(8, 53, 0.2);
-			cargar_sprite_buffer(personajes[1], "PROF.PCX", g);
+			cargar_sprite_buffer(personajes[1], "PROF.PCX", h);
 		case 1:
 			personajes[0].crear(8, 53, 0.2);
-			cargar_sprite_buffer(personajes[0], "PROF.PCX", g);
+			cargar_sprite_buffer(personajes[0], "PROF.PCX", h);
 	}
 
 	if (h.loadPCX("BOSQUEF.PCX") == 0)
@@ -260,7 +258,7 @@ BattleMode::loadBatalla(Graph &h) {
 	h.clr(h.pv1, 0);
 	h.pal();
 }
-BattleMode::modoBatalla(Graph &g)
+void BattleMode::modoBatalla(Graph &g, Font &f)
 {
 
 	g.volcar(g.pv1, g.pv2);
@@ -436,7 +434,7 @@ BattleMode::modoBatalla(Graph &g)
 
 		case 3:
 			char *strtemp = "****";
-			bat.pro[0].convertir(bat.ataque(), strtemp);f
+			bat.pro[0].convertir(bat.ataque(), strtemp);
 			personajes[personaje_actual].animacion = 1;
 			enemigos[enemigo_actual].animacion = 1;
 			control1 = 4;
@@ -1629,7 +1627,7 @@ int main()
 					battle.loadBatalla(g);
 					battle.loaded = TRUE;
 				}
-				battle.modoBatalla(g);
+				battle.modoBatalla(g,f);
 			} else {
 				explo.leerTeclado();
 				if (explo.toco == TRUE)

@@ -8,6 +8,7 @@ public: int nmonstruos;
 	Personaje m[6];
 	Personaje pro[3];
 
+	Batalla();
 	Batalla(int a,int b);
 	~Batalla();
 	void CargarMonstruos();
@@ -20,11 +21,15 @@ public: int nmonstruos;
 	void menu(int &o,Font &r,Graph &h);
 	int ataque();
 };
-void Batalla::Batalla(int a,int b){
+Batalla::Batalla(){
+       nmonstruos=1;
+       npersonajes=1;
+}
+Batalla::Batalla(int a,int b){
        nmonstruos=a;
        npersonajes=b;
 }
-void Batalla::~Batalla(){
+Batalla::~Batalla(){
 	cout<<"Se destruyo el Objeto Batalla exitosamente!\n";
 }
 void Batalla::CargarMonstruos(){
