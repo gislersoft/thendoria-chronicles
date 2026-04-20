@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/TURBOC3/SRC/port/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

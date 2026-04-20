@@ -1,0 +1,3 @@
+C:/TURBOC3/SRC/port/build/CMakeFiles/thendoria_port.dir
+C:/TURBOC3/SRC/port/build/CMakeFiles/ALL_BUILD.dir
+C:/TURBOC3/SRC/port/build/CMakeFiles/ZERO_CHECK.dir
