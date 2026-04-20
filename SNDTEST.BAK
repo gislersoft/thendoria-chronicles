@@ -1,0 +1,60 @@
+#include "ALLOC.H"
+#include "DOS.H"
+#include "CONIO.H"
+#include "STDIO.H"
+
+
+unsigned int Base; //Sound Blaster base address
+
+
+
+int ResetDSP(unsigned int Test)
+{
+  //Reset the DSP
+  outportb (Test + 0x6, 1);
+  delay(10);
+  outportb (Test + 0x6, 0);
+  delay(10);
+  //Check if (reset was succesfull
+  if ((inportb(Test + 0xE) & 0x80 == 0x80) && (inportb(Test + 0xA) ==0xAA))
+  {
+  //DSP was found
+  Base = Test;
+  return (1);
+  }
+  else
+  //No DSP was found
+  return (0);
+}
+
+void WriteDSP(unsigned char Value)
+{
+  while ((inportb(Base + 0xC) & 0x80) == 0x80);
+  outportb (Base + 0xC, Value);
+}
+
+
+
+void speaker_on()
+{
+
+WriteDSP(0xD1);
+}
+
+void speaker_off()
+{
+
+WriteDSP(0xD3);
+}
+
+void main()
+{
+ResetDSP (0x220);
+speaker_on();
+WriteDSP(0x10);
+WriteDSP(67);
+
+delay(10);
+speaker_off();
+
+}

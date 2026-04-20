@@ -21,6 +21,9 @@
 #include "vgapoo.h"
 #include "fnt13h.h"
 #include "spr13h.h"
+/*===========================[Archivos Cabecera Custom Modo Batalla]============================*/
+#include "person.h"
+#include "batalla.h"
 
 /*=======================[Definicion de constantes]=========================*/
 #define MAXCHAROBJ 9 // Maximo de caracteres para el nombre de un objeto
@@ -91,8 +94,7 @@ typedef unsigned char byte;
 
 /*====================[Definicion de la estructura objeto]==================*/
 typedef struct objeto
-{
-
+{ 
 	boolean importante;		  // Si el objeto es importante
 	boolean solido;			  // Si el objeto es solido
 	boolean ciclico;		  // Si el objeto es ciclico
@@ -109,6 +111,582 @@ typedef struct objeto
 
 objeto mapa[MAXMAP][MAXMAP]; // Variable que contiene todos los objetos
 
+/*==========================[Definicion de la clase Batallador]=============*/
+
+class BattleMode
+{
+public:
+	clock_t start, start2;		 // Controla los tiempos de teclado y animaciones
+	Batalla bat;
+	Sprite enemigos[6];
+	Sprite personajes[3];
+
+	char tecla;
+	unsigned char accion;
+	int op, op2, op3;
+	unsigned char reloj, reloj2;
+	int enemigo_actual, personaje_actual;
+	unsigned char seleccionar_enemigo, seleccionar_personaje, seleccionar_magia;
+	unsigned char turno, control1, control2, seleccionar_opcion;
+	unsigned char seleccionar_sub;
+
+	boolean loaded;
+
+	// Constructor y destructor
+	BattleMode();
+	~BattleMode();
+	//-----------------
+
+	void Error(char *texto, int tipo_error);
+	int demorar(clock_t s, float t);
+	void cargar_sprite_buffer(Sprite &m, char *nombre, Graph &h);
+	void loadBatalla(Graph &h);
+	void modoBatalla(Graph &g);
+};
+BattleMode::initValues() {
+	op = 1;
+	op2 = 1;
+	op3 = 1;
+	reloj = 1;
+	reloj2 = 1;
+	enemigo_actual = 0;
+	personaje_actual = 0;
+	seleccionar_enemigo = 0;
+	seleccionar_personaje = 0;
+	seleccionar_magia = 0;
+	turno = 1;
+	control1 = 0;
+	control2 = 0;
+	seleccionar_opcion = 0;
+	seleccionar_sub = 0;
+	loaded = FALSE;
+}
+//----------------------------------------------------------------------------
+BattleMode::BattleMode()
+{
+	initValues();
+}
+//----------------------------------------------------------------------------
+BattleMode::~BattleMode()
+{
+}
+// Escribe un mensaje de erro con el tipo de error generado
+BattleMode::Error(char *texto, int tipo_error)
+{
+	cout << "Error:" << texto;
+	switch (tipo_error)
+	{
+	case 1:
+		cout << "No hay suficiente memoria.";
+		break;
+	case 2:
+		cout << "No se pudo abrir.";
+		break;
+	default:
+		cout << "Se aborto el programa por razones desconocidas.";
+		break;
+	}
+	getch();
+	exit(1);
+}
+// Retorna 1 cuando pasan t segundos
+BattleMode::demorar(clock_t s, float t)
+{
+	if (((clock() - s) / CLK_TCK) > t)
+		return 1;
+	return 0;
+}
+// Carga un sprite desde un archivo
+BattleMode::cargar_sprite_buffer(Sprite &m, char *nombre, Graph &h)
+{
+	if ((m.status() == 0))
+		Error(nombre, 1);
+	if (m.cargarSprite(nombre, h) == 0)
+		Error(nombre, 2);
+}
+BattleMode::loadBatalla(Graph &h) {
+	bat = Batalla(6, 3); // Crea una batalla con X monstruos y Y personajes
+	bat.CargarPersonajes();
+	bat.CargarMonstruos();
+
+	for (int l = 0; l < bat.nmonstruos; l++)
+		bat.string_mons[l].cad = "PLANTA.PCX";
+
+	/*
+	 Se cargan los monstruos de acuerdo a los archivos
+     especificados en bat.string_mons
+	*/
+	switch (bat.nmonstruos)
+	{
+	case 6:
+		enemigos[5].crear(7, 60, 0.13);
+		cargar_sprite_buffer(enemigos[5], bat.string_mons[5].cad, g);
+	case 5:
+		enemigos[4].crear(7, 60, 0.13);
+		cargar_sprite_buffer(enemigos[4], bat.string_mons[4].cad, g);
+	case 4:
+		enemigos[3].crear(7, 60, 0.13);
+		cargar_sprite_buffer(enemigos[3], bat.string_mons[3].cad, g);
+	case 3:
+		enemigos[2].crear(7, 60, 0.13);
+		cargar_sprite_buffer(enemigos[2], bat.string_mons[2].cad, g);
+	case 2:
+		enemigos[1].crear(7, 60, 0.13);
+		cargar_sprite_buffer(enemigos[1], bat.string_mons[1].cad, g);
+	case 1:
+		enemigos[0].crear(7, 60, 0.13);
+		cargar_sprite_buffer(enemigos[0], bat.string_mons[0].cad, g);
+	}
+
+	// Se cargan los sprites de los protagonistas
+	switch (bat.npersonajes)
+	{
+		case 3:
+			personajes[2].crear(8, 53, 0.2);
+			cargar_sprite_buffer(personajes[2], "PROF.PCX", g);
+		case 2:
+			personajes[1].crear(8, 53, 0.2);
+			cargar_sprite_buffer(personajes[1], "PROF.PCX", g);
+		case 1:
+			personajes[0].crear(8, 53, 0.2);
+			cargar_sprite_buffer(personajes[0], "PROF.PCX", g);
+	}
+
+	if (h.loadPCX("BOSQUEF.PCX") == 0)
+		Error("BOSQUEF.PCX", 2); // Se carga el fondo
+
+			// Se empieza el modo 13h
+	h.modo_video(GRAFICO);
+	h.clr(h.pv1, 0);
+	h.pal();
+}
+BattleMode::modoBatalla(Graph &g)
+{
+
+	g.volcar(g.pv1, g.pv2);
+
+	tecla = inport(0x60);
+
+	// Control de relojes
+	if (reloj == 1)
+	{
+		start = clock();
+		reloj = 0;
+	}
+	if (reloj2 == 1)
+	{
+		start2 = clock();
+		reloj2 = 0;
+	}
+
+	// Gestion de teclas
+	if (turno == 1)
+	{
+		switch (tecla)
+		{
+
+		case 57:
+			if (demorar(start, 0.2) == 1)
+			{
+				if (seleccionar_sub == 1)
+				{
+					seleccionar_sub = 0;
+					control1 = 3;
+					op3 = 1;
+					op2 = 1;
+					op = 1;
+				}
+				if (seleccionar_magia == 1)
+				{
+					op2 = 7;
+					seleccionar_magia = 0;
+					seleccionar_sub = 1;
+				}
+				if (seleccionar_enemigo == 1)
+				{
+					seleccionar_enemigo = 0;
+					control1 = 2;
+				}
+				if (seleccionar_opcion == 1)
+				{
+					control1 = 1;
+					seleccionar_opcion = 0;
+				}
+				reloj = 1;
+			}
+			break;
+		case 75:
+			if (demorar(start, 0.2) == 1)
+			{
+				if (seleccionar_enemigo == 1)
+				{
+					if (enemigo_actual > 0)
+						enemigo_actual--;
+					else
+						enemigo_actual = bat.nmonstruos - 1;
+				}
+				reloj = 1;
+			}
+			break;
+		case 77:
+			if (demorar(start, 0.2) == 1)
+			{
+				if (seleccionar_enemigo == 1)
+				{
+					if (enemigo_actual < bat.nmonstruos - 1)
+						enemigo_actual++;
+					else
+						enemigo_actual = 0;
+				}
+				reloj = 1;
+			}
+			break;
+		case 72:
+			if (seleccionar_opcion == 1)
+			{
+				if (demorar(start, 0.2) == 1)
+				{
+					op--;
+					reloj = 1;
+				}
+			}
+			if (seleccionar_magia == 1)
+			{
+				if (demorar(start, 0.2) == 1)
+				{
+					op2--;
+					reloj = 1;
+				}
+			}
+			if (seleccionar_sub == 1)
+			{
+				if (demorar(start, 0.2) == 1)
+				{
+					op3--;
+					reloj = 1;
+				}
+			}
+			break;
+		case 80:
+			if (seleccionar_opcion == 1)
+			{
+				if (demorar(start, 0.2) == 1)
+				{
+					op++;
+					reloj = 1;
+				}
+			}
+			if (seleccionar_magia == 1)
+			{
+				if (demorar(start, 0.2) == 1)
+				{
+					op2++;
+					reloj = 1;
+				}
+			}
+			if (seleccionar_sub == 1)
+			{
+				if (demorar(start, 0.2) == 1)
+				{
+					op3++;
+					reloj = 1;
+				}
+			}
+			break;
+		}
+	}
+
+	bat.menu(op, f, g);
+
+	// Gestion del turno de los protagonistas
+	if (turno == 1)
+	{
+		switch (control1)
+		{
+		case 0:
+			seleccionar_opcion = 1;
+			break;
+		case 1:
+			seleccionar_enemigo = 1;
+			break;
+		case 2:
+			if (bat.m[enemigo_actual].vivo == 1)
+			{
+				switch (op)
+				{
+				case 1:
+					bat.contrincantes(personaje_actual, enemigo_actual, 1);
+					control1 = 3;
+					break;
+				case 2:
+					if (seleccionar_sub == 0)
+						seleccionar_magia = 1;
+					else
+						seleccionar_magia = 0;
+					op = 5;
+					break;
+				case 3:
+					control1 = 0;
+					break;
+				}
+			}
+			else
+				control1 = 0;
+			break;
+
+		case 3:
+			char *strtemp = "****";
+			bat.pro[0].convertir(bat.ataque(), strtemp);f
+			personajes[personaje_actual].animacion = 1;
+			enemigos[enemigo_actual].animacion = 1;
+			control1 = 4;
+			op = 5;
+			break;
+		case 4:
+			if (enemigos[enemigo_actual].animacion == 1)
+			{
+				enemigos[enemigo_actual].posicionar(enemigos[enemigo_actual].x1, enemigos[enemigo_actual].y1);
+				enemigos[enemigo_actual].animar(0, 4, 0, clock(), g);
+			}
+			if (personajes[personaje_actual].animacion == 1)
+			{
+				personajes[personaje_actual].posicionar(enemigos[enemigo_actual].x1 + 30, enemigos[enemigo_actual].y1 + 20);
+				personajes[personaje_actual].animar(2, 4, 0, clock(), g);
+			}
+
+			bat.mostrar_golpe(strtemp, enemigos[enemigo_actual], f, g);
+
+			if (demorar(start2, 2) == 1 && personajes[personaje_actual].animacion == 0 && enemigos[enemigo_actual].animacion == 0)
+			{
+				personaje_actual++;
+				op = 1;
+				if (personaje_actual > (bat.npersonajes - 1))
+				{
+					personaje_actual = 0;
+					enemigo_actual = 0;
+					control1 = 0;
+					turno = 0;
+					op = 5;
+				}
+				else
+					control1 = 0;
+				reloj2 = 1;
+			}
+			break;
+		}
+	}
+	else
+	{
+		// Gestion del turno de los enemigos
+		switch (control2)
+		{
+		case 0:
+			control2 = 1;
+			accion = 1;
+			break;
+		case 1:
+			personaje_actual = 0;
+			control2 = 2;
+			break;
+		case 2:
+			if (bat.m[enemigo_actual].vivo == 1)
+			{
+				switch (accion)
+				{
+				case 1:
+					bat.contrincantes(personaje_actual, enemigo_actual, 0);
+					control2 = 3;
+					break;
+				}
+			}
+			else
+			{
+				control2 = 0;
+				enemigo_actual++;
+				if (enemigo_actual > bat.nmonstruos - 1)
+				{
+					control2 = 0;
+					enemigo_actual = 0;
+					turno = 1;
+				}
+			}
+			break;
+		case 3:
+			char *strtemp2 = "****";
+			bat.pro[0].convertir(bat.ataque(), strtemp2);
+			personajes[personaje_actual].animacion = 1;
+			enemigos[enemigo_actual].animacion = 1;
+			control2 = 4;
+			break;
+		case 4:
+			if (personajes[personaje_actual].animacion == 1)
+			{
+				personajes[personaje_actual].posicionar(personajes[personaje_actual].x1, personajes[personaje_actual].y1);
+				personajes[personaje_actual].animar(5, 7, 0, clock(), g);
+			}
+			if (enemigos[enemigo_actual].animacion == 1)
+			{
+				enemigos[enemigo_actual].posicionar(personajes[personaje_actual].x1 - 30, personajes[personaje_actual].y1 - 10);
+				enemigos[enemigo_actual].animar(5, 6, 0, clock(), g);
+			}
+
+			bat.mostrar_golpe(strtemp2, personajes[personaje_actual], f, g);
+
+			if (demorar(start2, 2) == 1 && personajes[personaje_actual].animacion == 0 && enemigos[enemigo_actual].animacion == 0)
+			{
+				enemigo_actual++;
+				if (enemigo_actual > bat.nmonstruos - 1)
+				{
+					enemigo_actual = 0;
+					personaje_actual = 0;
+					control2 = 0;
+					turno = 1;
+					op = 1;
+				}
+				else
+					control2 = 0;
+				reloj2 = 1;
+			}
+			break;
+		}
+	}
+
+	if (seleccionar_enemigo == 1)
+	{
+		if (bat.m[enemigo_actual].vivo == 1)
+			bat.marcar_personaje(enemigos[enemigo_actual], 157, g);
+		else
+			bat.marcar_personaje(enemigos[enemigo_actual], 69, g);
+	}
+	// Gestion de Dibujo de enemigos
+	switch (bat.nmonstruos)
+	{
+	case 6:
+		if (bat.m[5].vivo == 1)
+		{
+			if (enemigos[5].animacion == 0)
+			{
+				enemigos[5].posicionar(110, 0);
+				enemigos[5].dibujart(0, 3, 0, clock(), g);
+			}
+		}
+		else
+		{
+			enemigos[5].posicionar(110, 0);
+			enemigos[5].animar(0, 4, 0, clock(), g);
+		}
+	case 5:
+		if (bat.m[4].vivo == 1)
+		{
+			if (enemigos[4].animacion == 0)
+			{
+				enemigos[4].posicionar(70, 30);
+				enemigos[4].dibujart(0, 3, 0, clock(), g);
+			}
+		}
+		else
+		{
+			enemigos[4].posicionar(70, 30);
+			enemigos[4].animar(0, 4, 0, clock(), g);
+		}
+	case 4:
+		if (bat.m[3].vivo == 1)
+		{
+			if (enemigos[3].animacion == 0)
+			{
+				enemigos[3].posicionar(30, 60);
+				enemigos[3].dibujart(0, 3, 0, clock(), g);
+			}
+		}
+		else
+		{
+			enemigos[3].posicionar(30, 60);
+			enemigos[3].animar(0, 4, 0, clock(), g);
+		}
+	case 3:
+		if (bat.m[2].vivo == 1)
+		{
+			if (enemigos[2].animacion == 0)
+			{
+				enemigos[2].posicionar(150, 20);
+				enemigos[2].dibujart(0, 3, 0, clock(), g);
+			}
+		}
+		else
+		{
+			enemigos[2].posicionar(150, 20);
+			enemigos[2].animar(0, 4, 0, clock(), g);
+		}
+	case 2:
+		if (bat.m[1].vivo == 1)
+		{
+			if (enemigos[1].animacion == 0)
+			{
+				enemigos[1].posicionar(110, 50);
+				enemigos[1].dibujart(0, 3, 0, clock(), g);
+			}
+		}
+		else
+		{
+			enemigos[1].posicionar(110, 50);
+			enemigos[1].animar(0, 4, 0, clock(), g);
+		}
+	case 1:
+		if (bat.m[0].vivo == 1)
+		{
+			if (enemigos[0].animacion == 0)
+			{
+				enemigos[0].posicionar(70, 80);
+				enemigos[0].dibujart(0, 3, 0, clock(), g);
+			}
+		}
+		else
+		{
+			enemigos[0].posicionar(70, 80);
+			enemigos[0].animar(0, 4, 0, clock(), g);
+		}
+	}
+	// Gestion de marcado de personajes
+	if (seleccionar_personaje == 1)
+		bat.marcar_personaje(personajes[personaje_actual], 46, g);
+	// Gestion de dibujo de protagonistas
+	switch (bat.npersonajes)
+	{
+	case 3:
+		if (bat.pro[2].vivo == 1)
+		{
+			if (personajes[2].animacion == 0)
+			{
+				personajes[2].posicionar(270, 66);
+				personajes[2].dibujart(0, 2, 0, clock(), g);
+			}
+		}
+	case 2:
+		if (bat.pro[1].vivo == 1)
+		{
+			if (personajes[1].animacion == 0)
+			{
+				personajes[1].posicionar(240, 86);
+				personajes[1].dibujart(0, 2, 0, clock(), g);
+			}
+		}
+	case 1:
+		if (bat.pro[0].vivo == 1)
+		{
+			if (personajes[0].animacion == 0)
+			{
+				personajes[0].posicionar(210, 106);
+				personajes[0].dibujart(0, 2, 0, clock(), g);
+			}
+		}
+	}
+
+	bat.Mostrartabla(f, g); // Se muestra el estatus del usuario
+	if (seleccionar_magia == 1 || seleccionar_sub == 1)
+		bat.menu_magia(personaje_actual, f, g, op2, op3);
+	g.volcar(g.vga, g.pv1);											 // Se dibuja un frame de escena
+	g.clr(g.pv1, 0);												 // Se borra el buffer para crear una nueva escena
+}
 /*==========================[Definicion de la clase explorador]=============*/
 class Explorador
 {
@@ -132,6 +710,7 @@ public:
 	boolean leyendo;	  // Si el jugador esta leyendo.
 	boolean enter;		  // Muestra el Enter del dialogo.
 	boolean toggleSound;
+	boolean batalla;
 	byte xpos_actual; // Guarda la posicion vertical del personaje dentro del mapa.
 	byte ypos_actual; // Guarda la posicion horizontal del personaje dentro del mapa.
 	byte xpos_objeto; // Guarda la posicion vertical del objeto interactuado.
@@ -202,6 +781,8 @@ Explorador::Explorador()
 	reloj = FALSE;		  // Aun no se debe iniciar el temporizador para el dialogo.
 	leyendo = FALSE;	  // Cuando se lee un ENTER para el dialogo se activa, y 2 segundos mas tarde se vuelve a activar.
 	enter = FALSE;		  // Cuando pasan 2 segundos se prende esta bandera, para leer un ENTER en el modo dialogo.
+
+	batalla = TRUE;
 
 	// Atributos tipo byte
 	/*
@@ -1001,6 +1582,7 @@ int main()
 	char *numero2 = "****";
 	Font f = Font();
 	Explorador explo;
+	BattleMode battle;
 	if (g.status() == 0)
 	{
 		printf("No hay suficiente Memoria");
@@ -1042,99 +1624,107 @@ int main()
 	{
 		if (explo.dialogo == FALSE)
 		{
-			explo.leerTeclado();
-			if (explo.toco == TRUE)
-			{
-				explo.toco = FALSE;
-				explo.actualizarObjeto();
-				if (explo.importante())
-				{
-					// Guardamos el nombre en el archivo mochila
+			if (explo.batalla == TRUE) {
+				if (battle.loaded == FALSE) {
+					battle.loadBatalla(g);
+					battle.loaded = TRUE;
 				}
-				if (explo.neutro())
+				battle.modoBatalla(g);
+			} else {
+				explo.leerTeclado();
+				if (explo.toco == TRUE)
 				{
-					explo.dibujarMapa(g, f);
-				}
-				else
-				{
-					explo.analizadorAccion();
-				}
-			}
-			else
-			{
-				if (explo.camino == TRUE)
-				{
-					explo.camino = FALSE;
+					explo.toco = FALSE;
 					explo.actualizarObjeto();
-					if (explo.solido() == TRUE)
+					if (explo.importante())
+					{
+						// Guardamos el nombre en el archivo mochila
+					}
+					if (explo.neutro())
 					{
 						explo.dibujarMapa(g, f);
 					}
 					else
 					{
-						if (explo.importante())
-						{
-							// Guardamos el nombre en el archivo mochila
-						}
-						if (explo.neutro())
+						explo.analizadorAccion();
+					}
+				}
+				else
+				{
+					if (explo.camino == TRUE)
+					{
+						explo.camino = FALSE;
+						explo.actualizarObjeto();
+						if (explo.solido() == TRUE)
 						{
 							explo.dibujarMapa(g, f);
 						}
 						else
 						{
-							explo.analizadorAccion();
+							if (explo.importante())
+							{
+								// Guardamos el nombre en el archivo mochila
+							}
+							if (explo.neutro())
+							{
+								explo.dibujarMapa(g, f);
+							}
+							else
+							{
+								explo.analizadorAccion();
+							}
 						}
 					}
+					else
+					{
+						explo.dibujarMapa(g, f);
+					}
 				}
-				else
+
+				if (explo.cargar_nuevo && explo.scroll == FALSE)
 				{
+					strcpy(explo.t_archivo, "");
+					strcat(explo.t_archivo, "MAPS/");
+					strcat(explo.t_archivo, mapa[explo.xpos_objeto][explo.ypos_objeto].archivo);
+					strcat(explo.t_archivo, ".TXT");
+					explo.actualizarPosicion(mapa[explo.xpos_objeto][explo.ypos_objeto].x - 1, mapa[explo.xpos_objeto][explo.ypos_objeto].y - 1);
+					explo.borrarMapa();
+					if (explo.cargarMapa(explo.t_archivo) == 0)
+					{
+						printf("Error: no se pudo abrir %s", explo.t_archivo);
+						getch();
+						exit(0);
+					}
+					g.fadeout(10);
 					explo.dibujarMapa(g, f);
+					g.fade12(10);
+					explo.actualizarObjeto();
+					explo.cargar_nuevo = FALSE;
 				}
+				/*
+				f.toString(explo.xpos_objeto,numero);
+				f.toString(explo.ypos_objeto,numero2);
+				*/
+				/*
+				f.toString(explo.xpos_actual,numero);
+				f.toString(explo.ypos_actual,numero2);
+
+				//	explo.dibujarMapa(g);
+
+				//dialbox(82,155,"DIALOGS/lineas.txt",1,5,g,f);
+				f.putstr(g.vga,225,190,"GISLERSOFT",g,0,15);
+				f.putstr(g.vga,275,190,"X:",g,0,15);
+				f.putstr(g.vga,295,190,"Y:",g,0,15);
+				*/
+
+				f.putstr(g.vga, 284, 190, numero, g, 0, 15);
+				f.putstr(g.vga, 304, 190, numero2, g, 0, 15);
+
+				/*
+				if(mapa[explo.xpos_objeto][explo.ypos_objeto].solido==TRUE)f.putstr(g.vga,195,190,"TRUE",g,0,15);
+				else f.putstr(g.vga,195,190,"FALSE",g,0,15);
+				*/
 			}
-
-			if (explo.cargar_nuevo && explo.scroll == FALSE)
-			{
-				strcpy(explo.t_archivo, "");
-				strcat(explo.t_archivo, "MAPS/");
-				strcat(explo.t_archivo, mapa[explo.xpos_objeto][explo.ypos_objeto].archivo);
-				strcat(explo.t_archivo, ".TXT");
-				explo.actualizarPosicion(mapa[explo.xpos_objeto][explo.ypos_objeto].x - 1, mapa[explo.xpos_objeto][explo.ypos_objeto].y - 1);
-				explo.borrarMapa();
-				if (explo.cargarMapa(explo.t_archivo) == 0)
-				{
-					printf("Error: no se pudo abrir %s", explo.t_archivo);
-					getch();
-					exit(0);
-				}
-				g.fadeout(10);
-				explo.dibujarMapa(g, f);
-				g.fade12(10);
-				explo.actualizarObjeto();
-				explo.cargar_nuevo = FALSE;
-			}
-			/*
-			f.toString(explo.xpos_objeto,numero);
-			f.toString(explo.ypos_objeto,numero2);
-			*/
-			/*
-			f.toString(explo.xpos_actual,numero);
-			f.toString(explo.ypos_actual,numero2);
-
-			 //	explo.dibujarMapa(g);
-
-			//dialbox(82,155,"DIALOGS/lineas.txt",1,5,g,f);
-			f.putstr(g.vga,225,190,"GISLERSOFT",g,0,15);
-			f.putstr(g.vga,275,190,"X:",g,0,15);
-			f.putstr(g.vga,295,190,"Y:",g,0,15);
-			*/
-
-			f.putstr(g.vga, 284, 190, numero, g, 0, 15);
-			f.putstr(g.vga, 304, 190, numero2, g, 0, 15);
-
-			/*
-			if(mapa[explo.xpos_objeto][explo.ypos_objeto].solido==TRUE)f.putstr(g.vga,195,190,"TRUE",g,0,15);
-			else f.putstr(g.vga,195,190,"FALSE",g,0,15);
-			*/
 		}
 		else
 		{
@@ -1144,7 +1734,7 @@ int main()
 			strcat(explo.t_archivo, ".TXT");
 			explo.dialogoCarga(g, f, mapa[explo.xpos_objeto][explo.ypos_objeto].x, mapa[explo.xpos_objeto][explo.ypos_objeto].y);
 		}
-		*(char far *)MK_FP(0x40, 0x1a) = *(char far *)MK_FP(0x40, 0x1c);
+		*(char far *)MK_FP(0x40, 0x1a) = *(char far *)MK_FP(0x40, 0x1c); // Evita el retrazado y el chilleo de teclas
 	}
 	g.modo_video(TEXTO);
 	g.destruir();
