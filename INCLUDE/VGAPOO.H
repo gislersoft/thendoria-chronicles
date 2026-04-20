@@ -97,7 +97,6 @@ void Graph::destruir()
 {
 	farfree(pv1);
 	farfree(pv2);
-	farfree(vga);
 	if (utilizar_pvm_pvf == 1)
 	{
 		farfree(pvm);

@@ -433,7 +433,7 @@ void BattleMode::modoBatalla(Graph &g, Font &f)
 			break;
 
 		case 3:
-			char *strtemp = "****";
+			char strtemp[5] = "****";
 			bat.pro[0].convertir(bat.ataque(), strtemp);
 			personajes[personaje_actual].animacion = 1;
 			enemigos[enemigo_actual].animacion = 1;
@@ -510,7 +510,7 @@ void BattleMode::modoBatalla(Graph &g, Font &f)
 			}
 			break;
 		case 3:
-			char *strtemp2 = "****";
+			char strtemp2[5] = "****";
 			bat.pro[0].convertir(bat.ataque(), strtemp2);
 			personajes[personaje_actual].animacion = 1;
 			enemigos[enemigo_actual].animacion = 1;
@@ -1576,11 +1576,17 @@ int main()
 {
 
 	Graph g(0);
-	char *numero = "****";
-	char *numero2 = "****";
+	char numero[5] = "****";
+	char numero2[5] = "****";
 	Font f = Font();
 	Explorador explo;
-	BattleMode battle;
+	BattleMode *battle = new BattleMode;
+	if (battle == NULL)
+	{
+		printf("No hay suficiente Memoria");
+		getch();
+		return 1;
+	}
 	if (g.status() == 0)
 	{
 		printf("No hay suficiente Memoria");
@@ -1623,11 +1629,11 @@ int main()
 		if (explo.dialogo == FALSE)
 		{
 			if (explo.batalla == TRUE) {
-				if (battle.loaded == FALSE) {
-					battle.loadBatalla(g);
-					battle.loaded = TRUE;
+				if (battle->loaded == FALSE) {
+					battle->loadBatalla(g);
+					battle->loaded = TRUE;
 				}
-				battle.modoBatalla(g,f);
+				battle->modoBatalla(g,f);
 			} else {
 				explo.leerTeclado();
 				if (explo.toco == TRUE)
@@ -1735,6 +1741,7 @@ int main()
 		*(char far *)MK_FP(0x40, 0x1a) = *(char far *)MK_FP(0x40, 0x1c); // Evita el retrazado y el chilleo de teclas
 	}
 	g.modo_video(TEXTO);
+	delete battle;
 	g.destruir();
 	exit(1);
 	return 0;

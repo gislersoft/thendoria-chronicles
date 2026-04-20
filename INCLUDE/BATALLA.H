@@ -71,8 +71,8 @@ void Batalla::CargarPersonajes(){
     }
 }
 void Batalla::Mostrartabla(Font &l,Graph &h){
-  char *str1="****";
-  char *str2="****";
+    char str1[5]="****";
+    char str2[5]="****";
   int ancho;
 
   pro[0].convertir(pro[0].hpN,str2);

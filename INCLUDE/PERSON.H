@@ -5,7 +5,7 @@
  vuelven a ser 0.
 
  Nota: Todas las siguientes variables cambian de acuerdo al nivel
-       de pelea o tambien depende del tipo de armadura, arma ¢
+       de pelea o tambien depende del tipo de armadura, arma o
        amuleto que esten usando.
 
  HP= Cantidad de vida del personaje si es 0 el personaje
@@ -35,10 +35,10 @@
 			     20 + 8 = 28
 
  Nota: Todas las anterior variables dependiendian de un u otra cosa
-       pero todas estan sometidas al destino, el destino puede quitar ¢
-       aumentar  un ataque,un ataque magico ¢ la defensa.
+       pero todas estan sometidas al destino, el destino puede quitar o
+       aumentar  un ataque,un ataque magico o la defensa.
 
-       DESTINO PARA UN ATAQUE à ATAQUE MAGICO
+       DESTINO PARA UN ATAQUE o ATAQUE MAGICO
 
        -5%  +2%  +4%  +6%   +8%  +10%  neto
 
@@ -228,4 +228,5 @@ void Personaje::convertir(int n,char *numero){
 	   default: numero[i]='*';
        }
    }
+	numero[4]='\0';
 }
