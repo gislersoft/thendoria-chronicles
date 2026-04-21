@@ -29,5 +29,46 @@
 # Executables
 *.out
 *.app
+*.exe
+
+# CMake / Ninja / Make generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+Makefile
+build.ninja
+.ninja_deps
+.ninja_log
+
+# Project-specific build output
+port/build/
+build/
+
+# Explicit build artifacts in this repo (requested)
+port/build/ALL_BUILD.vcxproj
+port/build/CMakeCache.txt
+port/build/CMakeFiles/CMakeConfigureLog.yaml
+port/build/CMakeFiles/generate.stamp.depend
+port/build/Release/thendoria_port.exe
+port/build/ZERO_CHECK.vcxproj
+port/build/thendoria_port.vcxproj
+port/build/thendoria_port.dir/**/*.tlog
+port/build/x64/**/*.tlog
+
+# Visual Studio / MSBuild
+.vs/
+*.sln
+*.vcxproj*
+*.VC.db
+*.VC.opendb
+*.ilk
+*.pdb
+*.idb
+*.tlog
+*.recipe
+
+# SDL runtime/log artifacts
+*.log
 
 .vscode/

@@ -168,7 +168,7 @@ CMAKE_STATIC_LINKER_FLAGS_RELEASE:STRING=
 CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO:STRING=
 
 //No help, variable specified on the command line.
-CMAKE_TOOLCHAIN_FILE:UNINITIALIZED=$toolchain
+CMAKE_TOOLCHAIN_FILE:UNINITIALIZED=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
 
 //If this value is on, makefiles will be generated without the
 // .SILENT directive, and all commands will be echoed to the console
@@ -190,6 +190,9 @@ SDL2_DIR:PATH=C:/vcpkg/installed/x64-windows/share/sdl2
 
 //The directory containing a CMake configuration file for SDL2_image.
 SDL2_image_DIR:PATH=C:/vcpkg/installed/x64-windows/share/SDL2_image
+
+//The directory containing a CMake configuration file for SDL2_mixer.
+SDL2_mixer_DIR:PATH=C:/vcpkg/installed/x64-windows/share/SDL2_mixer
 
 //Value Computed by CMake
 ThendoriaPort_BINARY_DIR:STATIC=C:/TURBOC3/SRC/port/build

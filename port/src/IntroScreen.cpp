@@ -1,15 +1,65 @@
 #include "IntroScreen.h"
 #include <SDL_image.h>
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+#include <SDL_mixer.h>
+#endif
 #include <iostream>
 #include <filesystem>
 #include <fstream>
 #include <algorithm>
 #include <thread>
 #include <chrono>
+#include <cmath>
+#include <random>
+
+namespace {
+
+std::uint32_t alphaBlendOver(std::uint32_t dst, std::uint32_t src) {
+    const int srcA = static_cast<int>((src >> 24) & 0xFF);
+    if (srcA <= 0) {
+        return dst;
+    }
+    if (srcA >= 255) {
+        return src;
+    }
+
+    const int dstA = static_cast<int>((dst >> 24) & 0xFF);
+    const int srcR = static_cast<int>((src >> 16) & 0xFF);
+    const int srcG = static_cast<int>((src >> 8) & 0xFF);
+    const int srcB = static_cast<int>(src & 0xFF);
+    const int dstR = static_cast<int>((dst >> 16) & 0xFF);
+    const int dstG = static_cast<int>((dst >> 8) & 0xFF);
+    const int dstB = static_cast<int>(dst & 0xFF);
+
+    const int invSrcA = 255 - srcA;
+    const int outA = srcA + ((dstA * invSrcA) / 255);
+    if (outA <= 0) {
+        return 0;
+    }
+
+    const int outR = (srcR * srcA + dstR * invSrcA) / 255;
+    const int outG = (srcG * srcA + dstG * invSrcA) / 255;
+    const int outB = (srcB * srcA + dstB * invSrcA) / 255;
+
+    return (static_cast<std::uint32_t>(outA) << 24)
+        | (static_cast<std::uint32_t>(outR) << 16)
+        | (static_cast<std::uint32_t>(outG) << 8)
+        | static_cast<std::uint32_t>(outB);
+}
+
+} // namespace
 
 IntroScreen::IntroScreen() {}
 
-IntroScreen::~IntroScreen() {}
+IntroScreen::~IntroScreen() {
+    stopIntroMusic();
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+    if (mixerReady_) {
+        Mix_CloseAudio();
+        mixerReady_ = false;
+    }
+#endif
+}
 
 std::string IntroScreen::resolvePath(const std::string &relPath) {
     std::vector<std::string> candidates = {
@@ -27,7 +77,8 @@ std::string IntroScreen::resolvePath(const std::string &relPath) {
     return std::string();
 }
 
-bool IntroScreen::loadImageToBuffer(const std::string &path, SDL_Renderer *renderer, GraphCompat &graph) {
+bool IntroScreen::loadImageToBuffer(const std::string &path, SDL_Renderer *renderer, GraphCompat &graph, bool blendOverExisting) {
+    (void)renderer;
     std::string resolvedPath = resolvePath(path);
     if (resolvedPath.empty()) {
         std::cerr << "Could not find image: " << path << '\n';
@@ -70,10 +121,17 @@ bool IntroScreen::loadImageToBuffer(const std::string &path, SDL_Renderer *rende
     uint32_t *pixels = static_cast<uint32_t *>(img->pixels);
     uint32_t *overlay = graph.getOverlay();
     if (overlay && pixels) {
-        std::copy(pixels, pixels + (320 * 200), overlay);
-        // Guardar la imagen original para fades
-        imageBuffer_.resize(320 * 200);
-        std::copy(pixels, pixels + (320 * 200), imageBuffer_.begin());
+        constexpr int kPixelCount = 320 * 200;
+        if (!blendOverExisting || imageBuffer_.size() != static_cast<std::size_t>(kPixelCount)) {
+            imageBuffer_.resize(kPixelCount);
+            std::copy(pixels, pixels + kPixelCount, imageBuffer_.begin());
+            std::copy(imageBuffer_.begin(), imageBuffer_.end(), overlay);
+        } else {
+            for (int i = 0; i < kPixelCount; ++i) {
+                imageBuffer_[static_cast<std::size_t>(i)] = alphaBlendOver(imageBuffer_[static_cast<std::size_t>(i)], pixels[i]);
+                overlay[i] = imageBuffer_[static_cast<std::size_t>(i)];
+            }
+        }
     }
 
     SDL_FreeSurface(img);
@@ -160,13 +218,66 @@ void IntroScreen::fadeOut(GraphCompat &graph, int steps) {
 }
 
 void IntroScreen::playSound(int frequency, int durationMs) {
+    (void)frequency;
     // Placeholder: SDL_mixer or similar would be used here for actual sound
     std::this_thread::sleep_for(std::chrono::milliseconds(durationMs));
 }
 
-void IntroScreen::waitForKey() {
+bool IntroScreen::startIntroMusic(const std::string &path) {
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+    stopIntroMusic();
+
+    std::string resolvedPath = resolvePath(path);
+    if (resolvedPath.empty()) {
+        std::cerr << "Could not find intro music: " << path << '\n';
+        return false;
+    }
+
+    if (!mixerReady_) {
+        if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024) != 0) {
+            std::cerr << "Mix_OpenAudio failed: " << Mix_GetError() << '\n';
+            return false;
+        }
+        mixerReady_ = true;
+    }
+
+    introMusic_ = Mix_LoadMUS(resolvedPath.c_str());
+    if (!introMusic_) {
+        std::cerr << "Mix_LoadMUS failed for " << resolvedPath << ": " << Mix_GetError() << '\n';
+        return false;
+    }
+
+    if (Mix_PlayMusic(introMusic_, -1) != 0) {
+        std::cerr << "Mix_PlayMusic failed: " << Mix_GetError() << '\n';
+        Mix_FreeMusic(introMusic_);
+        introMusic_ = nullptr;
+        return false;
+    }
+
+    introMusicPlaying_ = true;
+    return true;
+#else
+    (void)path;
+    return false;
+#endif
+}
+
+void IntroScreen::stopIntroMusic() {
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+    if (introMusicPlaying_) {
+        Mix_HaltMusic();
+        introMusicPlaying_ = false;
+    }
+
+    if (introMusic_) {
+        Mix_FreeMusic(introMusic_);
+        introMusic_ = nullptr;
+    }
+#endif
+}
+
+void IntroScreen::waitForKey(bool anyKey) {
     bool waiting = true;
-    bool keyWasDown = false;
 
     while (waiting) {
         SDL_Event event;
@@ -178,7 +289,7 @@ void IntroScreen::waitForKey() {
                 if (event.key.keysym.sym == SDLK_ESCAPE) {
                     exit(0);
                 }
-                if (event.key.keysym.sym == SDLK_SPACE || event.key.keysym.sym == SDLK_RETURN) {
+                if (anyKey || event.key.keysym.sym == SDLK_SPACE || event.key.keysym.sym == SDLK_RETURN) {
                     waiting = false;
                     break;
                 }
@@ -212,37 +323,192 @@ void IntroScreen::showLogoGislersoft(GraphCompat &graph, SDL_Renderer *renderer)
 }
 
 void IntroScreen::showIntroScreen(GraphCompat &graph, FontCompat &font, SDL_Renderer *renderer) {
+    (void)renderer;
     graph.clr(graph.pv1, 0);
     graph.clr(graph.pv2, 0);
     graph.clearOverlay();
 
-    if (!loadImageToBuffer("port/assets_png/IMG/intro.png", renderer, graph)) {
-        std::cerr << "Failed to load intro.png, skipping\n";
+    auto loadImagePixels = [&](const std::string &path, std::vector<std::uint32_t> &out) -> bool {
+        const std::string resolvedPath = resolvePath(path);
+        if (resolvedPath.empty()) {
+            return false;
+        }
+
+        SDL_Surface *img = IMG_Load(resolvedPath.c_str());
+        if (!img) {
+            return false;
+        }
+
+        SDL_Surface *scaled = nullptr;
+        if (img->w != 320 || img->h != 200) {
+            scaled = SDL_ConvertSurfaceFormat(img, SDL_PIXELFORMAT_ARGB8888, 0);
+            SDL_Surface *final = SDL_CreateRGBSurface(0, 320, 200, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
+            if (scaled && final) {
+                SDL_Rect src = {0, 0, scaled->w, scaled->h};
+                SDL_Rect dst = {0, 0, 320, 200};
+                SDL_BlitScaled(scaled, &src, final, &dst);
+                SDL_FreeSurface(scaled);
+                scaled = final;
+            } else if (final) {
+                SDL_FreeSurface(final);
+            }
+            SDL_FreeSurface(img);
+            img = scaled;
+        } else {
+            scaled = SDL_ConvertSurfaceFormat(img, SDL_PIXELFORMAT_ARGB8888, 0);
+            SDL_FreeSurface(img);
+            img = scaled;
+        }
+
+        if (!img) {
+            return false;
+        }
+
+        out.resize(320 * 200);
+        std::copy(static_cast<std::uint32_t *>(img->pixels), static_cast<std::uint32_t *>(img->pixels) + (320 * 200), out.begin());
+        SDL_FreeSurface(img);
+        return true;
+    };
+
+    std::vector<std::uint32_t> bgPixels;
+    std::vector<std::uint32_t> titlePixels;
+    const bool hasSeamlessBackground = loadImagePixels("port/assets_png/IMG/seamlessintrobg.png", bgPixels);
+    const bool hasTitleOverlay = loadImagePixels("port/assets_png/IMG/intro.png", titlePixels);
+
+    if (!hasSeamlessBackground && !hasTitleOverlay) {
+        std::cerr << "Failed to load seamlessintrobg.png and intro.png, skipping\n";
         return;
+    }
+
+    if (!hasSeamlessBackground) {
+        bgPixels = titlePixels;
+    }
+
+    if (hasSeamlessBackground && !hasTitleOverlay) {
+        std::cerr << "Failed to load intro.png overlay, using seamlessintrobg.png only\n";
+    }
+
+    // Seed fadeIn with the correct composed intro frame so previous screens
+    // (e.g. gsoft logo) are never reused during this transition.
+    imageBuffer_.resize(320 * 200);
+    uint32_t *overlay = graph.getOverlay();
+    for (int y = 0; y < 200; ++y) {
+        for (int x = 0; x < 320; ++x) {
+            std::uint32_t pixel = bgPixels[static_cast<std::size_t>(y * 320 + x)];
+            if (hasTitleOverlay) {
+                pixel = alphaBlendOver(pixel, titlePixels[static_cast<std::size_t>(y * 320 + x)]);
+            }
+            imageBuffer_[static_cast<std::size_t>(y * 320 + x)] = pixel;
+            if (overlay) {
+                overlay[y * 320 + x] = pixel;
+            }
+        }
     }
 
     fadeIn(graph, 25);
 
-    // Play sounds
-    playSound(262, 500);
-    playSound(247, 500);
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    playSound(350, 500);
-    playSound(247, 500);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    playSound(220, 1000);
+    const char *prompt = "PRESIONE CUALQUIER TECLA PARA CONTINUAR...";
+    const std::uint32_t introStartTicks = SDL_GetTicks();
+    std::uint32_t lastDirectionChangeTicks = introStartTicks;
+    bool waiting = true;
+    int offsetX = 0;
+    int offsetY = 0;
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    std::mt19937 rng(static_cast<std::uint32_t>(introStartTicks));
+    std::uniform_int_distribution<int> dirDist(-1, 1);
+    std::uniform_int_distribution<int> changeMsDist(1200, 2600);
+    int dirX = 1;
+    int dirY = 0;
+    int nextDirectionChangeMs = changeMsDist(rng);
 
-    font.putstr(graph.pv2, 70, 180, "PRESIONE CUALQUIER TECLA PARA CONTINUAR...", graph, 0, 15);
-    graph.wait_retrace();
-    graph.presentLayers(graph.vga, graph.pv2);
+    bool musicStarted = introMusicPlaying_;
+    bool musicStartAttempted = musicStarted;
 
-    waitForKey();
+    while (waiting) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                exit(0);
+            }
+            if (event.type == SDL_KEYDOWN) {
+                if (event.key.keysym.sym == SDLK_ESCAPE) {
+                    exit(0);
+                }
+                waiting = false;
+                break;
+            }
+        }
+
+        const std::uint32_t nowTicks = SDL_GetTicks();
+        if (!musicStartAttempted && (nowTicks - appLaunchTicks_) >= 3000U) {
+            musicStarted = startIntroMusic("sound/music/introSong.mp3");
+            musicStartAttempted = true;
+        }
+        if (static_cast<int>(nowTicks - lastDirectionChangeTicks) >= nextDirectionChangeMs) {
+            int newDirX = 0;
+            int newDirY = 0;
+            while (newDirX == 0 && newDirY == 0) {
+                newDirX = dirDist(rng);
+                newDirY = dirDist(rng);
+            }
+            dirX = newDirX;
+            dirY = newDirY;
+            lastDirectionChangeTicks = nowTicks;
+            nextDirectionChangeMs = changeMsDist(rng);
+        }
+
+        offsetX = (offsetX + dirX + 320) % 320;
+        offsetY = (offsetY + dirY + 200) % 200;
+
+        overlay = graph.getOverlay();
+        if (overlay) {
+            imageBuffer_.resize(320 * 200);
+            for (int y = 0; y < 200; ++y) {
+                const int srcY = (y + offsetY) % 200;
+                for (int x = 0; x < 320; ++x) {
+                    const int srcX = (x + offsetX) % 320;
+                    std::uint32_t pixel = bgPixels[static_cast<std::size_t>(srcY * 320 + srcX)];
+                    if (hasTitleOverlay) {
+                        pixel = alphaBlendOver(pixel, titlePixels[static_cast<std::size_t>(y * 320 + x)]);
+                    }
+                    imageBuffer_[static_cast<std::size_t>(y * 320 + x)] = pixel;
+                    overlay[y * 320 + x] = pixel;
+                }
+            }
+        }
+
+        const float t = static_cast<float>(nowTicks - introStartTicks) * 0.001f;
+        const float pulse = 0.5f * (std::sinf(t * 7.0f) + 1.0f);
+        const int bounce = static_cast<int>(std::sinf(t * 4.0f) * 4.0f);
+
+        constexpr unsigned char kPromptWhite = 15;
+        constexpr unsigned char kPromptYellow = 46;
+        const unsigned char mainColor = (pulse > 0.5f) ? kPromptWhite : kPromptYellow;
+        const unsigned char mainColorU8 = static_cast<unsigned char>(mainColor);
+        const int baseY = 178 + bounce;
+        const int x = 42;
+
+        graph.clr(graph.pv2, 0);
+
+        // Blink only between yellow and white.
+        font.putstr(graph.pv2, x, baseY, prompt, graph, 0, mainColorU8);
+
+        if (!musicStarted) {
+            font.putstr(graph.pv2, 82, 190, "MUSICA INTRO NO DISPONIBLE", graph, 0, 12);
+        }
+
+        graph.wait_retrace();
+        graph.presentLayers(graph.vga, graph.pv2);
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+    }
+
+    stopIntroMusic();
     fadeOut(graph, 50);
 }
 
 void IntroScreen::showAboutScreen(GraphCompat &graph, FontCompat &font, SDL_Renderer *renderer) {
+    startIntroMusic("sound/music/historyMusic.mp3");
+
     graph.clr(graph.pv1, 0);
     graph.clr(graph.pv2, 0);
     graph.clearOverlay();
@@ -448,10 +714,13 @@ void IntroScreen::drawDialogBox(GraphCompat &graph, FontCompat &font, const std:
     }
 }
 
-void IntroScreen::playFullIntro(GraphCompat &graph, FontCompat &font, SDL_Renderer *renderer) {
+void IntroScreen::playFullIntro(GraphCompat &graph, FontCompat &font, SDL_Renderer *renderer, std::uint32_t appLaunchTicks) {
+    appLaunchTicks_ = appLaunchTicks;
     showLogoGislersoft(graph, renderer);
     showIntroScreen(graph, font, renderer);
     showAboutScreen(graph, font, renderer);
     showHistoriaParte1(graph, font, renderer);
     showHistoriaParte2(graph, font, renderer);
+    // Ensure story loop ends before entering exploration/gameplay.
+    stopIntroMusic();
 }

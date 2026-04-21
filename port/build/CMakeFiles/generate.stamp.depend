@@ -38,6 +38,11 @@ C:/vcpkg/installed/x64-windows/share/SDL2_image/SDL2_image-shared-targets-releas
 C:/vcpkg/installed/x64-windows/share/SDL2_image/SDL2_image-shared-targets.cmake
 C:/vcpkg/installed/x64-windows/share/SDL2_image/SDL2_imageConfig.cmake
 C:/vcpkg/installed/x64-windows/share/SDL2_image/SDL2_imageConfigVersion.cmake
+C:/vcpkg/installed/x64-windows/share/SDL2_mixer/SDL2_mixer-shared-targets-debug.cmake
+C:/vcpkg/installed/x64-windows/share/SDL2_mixer/SDL2_mixer-shared-targets-release.cmake
+C:/vcpkg/installed/x64-windows/share/SDL2_mixer/SDL2_mixer-shared-targets.cmake
+C:/vcpkg/installed/x64-windows/share/SDL2_mixer/SDL2_mixerConfig.cmake
+C:/vcpkg/installed/x64-windows/share/SDL2_mixer/SDL2_mixerConfigVersion.cmake
 C:/vcpkg/installed/x64-windows/share/png/vcpkg-cmake-wrapper.cmake
 C:/vcpkg/installed/x64-windows/share/sdl2/SDL2Config.cmake
 C:/vcpkg/installed/x64-windows/share/sdl2/SDL2ConfigVersion.cmake

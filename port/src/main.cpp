@@ -1,4 +1,7 @@
 ﻿#include <SDL.h>
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+#include <SDL_mixer.h>
+#endif
 
 #include "GraphCompat.h"
 #include "FontCompat.h"
@@ -188,6 +191,8 @@ std::string resolveMapPath(const std::string &baseName) {
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
+
+    const std::uint32_t appLaunchTicks = SDL_GetTicks();
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0) {
         std::cerr << "SDL_Init failed: " << SDL_GetError() << '\n';
@@ -396,7 +401,41 @@ int main(int argc, char **argv) {
 
     // Play intro sequence
     IntroScreen intro;
-    intro.playFullIntro(graph, font, renderer);
+    intro.playFullIntro(graph, font, renderer, appLaunchTicks);
+
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+    Mix_Music *exploreMusic = nullptr;
+    const std::string exploreMusicPath = firstExistingPath({
+        "sound/music/exploreMusic.mp3",
+        "port/sound/music/exploreMusic.mp3",
+        "../port/sound/music/exploreMusic.mp3",
+        "../sound/music/exploreMusic.mp3"
+    });
+
+    if (!exploreMusicPath.empty()) {
+        int freq = 0;
+        std::uint16_t format = 0;
+        int channels = 0;
+        if (Mix_QuerySpec(&freq, &format, &channels) == 0) {
+            if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024) != 0) {
+                std::cerr << "Mix_OpenAudio failed for gameplay music: " << Mix_GetError() << '\n';
+            }
+        }
+
+        if (Mix_QuerySpec(&freq, &format, &channels) != 0) {
+            exploreMusic = Mix_LoadMUS(exploreMusicPath.c_str());
+            if (!exploreMusic) {
+                std::cerr << "Mix_LoadMUS failed for " << exploreMusicPath << ": " << Mix_GetError() << '\n';
+            } else if (Mix_PlayMusic(exploreMusic, -1) != 0) {
+                std::cerr << "Mix_PlayMusic failed for gameplay music: " << Mix_GetError() << '\n';
+                Mix_FreeMusic(exploreMusic);
+                exploreMusic = nullptr;
+            }
+        }
+    } else {
+        std::cerr << "Could not find gameplay music: exploreMusic.mp3" << '\n';
+    }
+#endif
 
     bool running = true;
     while (running) {
@@ -719,6 +758,14 @@ int main(int argc, char **argv) {
             SDL_Delay(static_cast<std::uint32_t>(targetFrameMs - frameElapsedMs));
         }
     }
+
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+    Mix_HaltMusic();
+    if (exploreMusic) {
+        Mix_FreeMusic(exploreMusic);
+        exploreMusic = nullptr;
+    }
+#endif
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

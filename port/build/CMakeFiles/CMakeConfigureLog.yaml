@@ -6010,3 +6010,1019 @@ events:
         - "C:/Program Files (x86)/ThendoriaPort"
       CMAKE_FIND_ROOT_PATH: "C:/vcpkg/installed/x64-windows/debug;C:/vcpkg/installed/x64-windows"
 ...
+
+---
+events:
+  -
+    kind: "find_package-v1"
+    backtrace:
+      - "C:/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
+      - "CMakeLists.txt:9 (find_package)"
+    name: "SDL2_mixer"
+    configs:
+      -
+        filename: "SDL2_mixer.cps"
+        kind: "cps"
+      -
+        filename: "sdl2_mixer.cps"
+        kind: "cps"
+      -
+        filename: "SDL2_mixerConfig.cmake"
+        kind: "cmake"
+      -
+        filename: "sdl2_mixer-config.cmake"
+        kind: "cmake"
+    version_request:
+      exact: false
+    settings:
+      required: "optional"
+      quiet: true
+      global: false
+      policy_scope: true
+      bypass_provider: false
+      names:
+        - "SDL2_mixer"
+      path_suffixes:
+        - ""
+      paths:
+        CMAKE_FIND_USE_CMAKE_PATH: true
+        CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+        CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+        CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+        CMAKE_FIND_USE_INSTALL_PREFIX: true
+        CMAKE_FIND_USE_PACKAGE_ROOT_PATH: true
+        CMAKE_FIND_USE_CMAKE_PACKAGE_REGISTRY: true
+        CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY: true
+        CMAKE_FIND_ROOT_PATH_MODE: "BOTH"
+    candidates:
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/TURBOC3/SRC/port/build/CMakeFiles/pkgRedirects/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/TURBOC3/SRC/port/build/CMakeFiles/pkgRedirects/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/TURBOC3/SRC/port/build/CMakeFiles/pkgRedirects/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/TURBOC3/SRC/port/build/CMakeFiles/pkgRedirects/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/TURBOC3/SRC/port/build/CMakeFiles/pkgRedirects/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/TURBOC3/SRC/port/build/CMakeFiles/pkgRedirects/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/debug/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/vcpkg/installed/x64-windows/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/debugCommand/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/debugCommand/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/debugCommand/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/debugCommand/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/debugCommand/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/debugCommand/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/copilotCli/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/copilotCli/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/copilotCli/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/copilotCli/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/copilotCli/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/copilotCli/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/Microsoft VS Code/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/Microsoft VS Code/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/Microsoft VS Code/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/Microsoft VS Code/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/Microsoft VS Code/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/Microsoft VS Code/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Python312/Scripts/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Python312/Scripts/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Python312/Scripts/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Python312/Scripts/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Python312/Scripts/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Python312/Scripts/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Python312/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Python312/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Python312/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Python312/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Python312/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Python312/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Eclipse Foundation/jdk-8.0.302.8-hotspot/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Eclipse Foundation/jdk-8.0.302.8-hotspot/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Eclipse Foundation/jdk-8.0.302.8-hotspot/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Eclipse Foundation/jdk-8.0.302.8-hotspot/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Eclipse Foundation/jdk-8.0.302.8-hotspot/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Eclipse Foundation/jdk-8.0.302.8-hotspot/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Python310/Scripts/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Python310/Scripts/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Python310/Scripts/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Python310/Scripts/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Python310/Scripts/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Python310/Scripts/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Python310/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Python310/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Python310/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Python310/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Python310/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Python310/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/wbem/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/wbem/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/wbem/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/wbem/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/wbem/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/wbem/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/WindowsPowerShell/v1.0/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/WindowsPowerShell/v1.0/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/WindowsPowerShell/v1.0/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/WindowsPowerShell/v1.0/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/WindowsPowerShell/v1.0/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/WindowsPowerShell/v1.0/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/OpenSSH/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/OpenSSH/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/OpenSSH/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/OpenSSH/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/OpenSSH/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/OpenSSH/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/dotnet/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/dotnet/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/dotnet/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/dotnet/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/dotnet/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/dotnet/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/QuickTime/QTSystem/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/QuickTime/QTSystem/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/QuickTime/QTSystem/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/QuickTime/QTSystem/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/QuickTime/QTSystem/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/QuickTime/QTSystem/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Git/cmd/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Git/cmd/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Git/cmd/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Git/cmd/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Git/cmd/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Git/cmd/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/ProgramData/chocolatey/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/ProgramData/chocolatey/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/ProgramData/chocolatey/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/ProgramData/chocolatey/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/ProgramData/chocolatey/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/ProgramData/chocolatey/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/nodejs/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/nodejs/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/nodejs/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/nodejs/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/nodejs/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/nodejs/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/cursor/resources/app/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/cursor/resources/app/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/cursor/resources/app/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/cursor/resources/app/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/cursor/resources/app/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/cursor/resources/app/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/CMake/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/CMake/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/CMake/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/CMake/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/CMake/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/CMake/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Microsoft/WindowsApps/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Microsoft/WindowsApps/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Microsoft/WindowsApps/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Microsoft/WindowsApps/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Microsoft/WindowsApps/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Microsoft/WindowsApps/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/GitHubDesktop/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/GitHubDesktop/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/GitHubDesktop/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/GitHubDesktop/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/GitHubDesktop/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/GitHubDesktop/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/JetBrains/IntelliJ IDEA 2024.3/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/JetBrains/IntelliJ IDEA 2024.3/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/JetBrains/IntelliJ IDEA 2024.3/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/JetBrains/IntelliJ IDEA 2024.3/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/JetBrains/IntelliJ IDEA 2024.3/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/JetBrains/IntelliJ IDEA 2024.3/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/npm/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/npm/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/npm/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/npm/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/npm/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Roaming/npm/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/cursor/resources/app/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/cursor/resources/app/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/cursor/resources/app/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/cursor/resources/app/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/cursor/resources/app/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/cursor/resources/app/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/Antigravity/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/Antigravity/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/Antigravity/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/Antigravity/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/Antigravity/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/AppData/Local/Programs/Antigravity/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/.vscode/extensions/ms-python.debugpy-2025.18.0-win32-x64/bundled/scripts/noConfigScripts/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/.vscode/extensions/ms-python.debugpy-2025.18.0-win32-x64/bundled/scripts/noConfigScripts/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/.vscode/extensions/ms-python.debugpy-2025.18.0-win32-x64/bundled/scripts/noConfigScripts/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/.vscode/extensions/ms-python.debugpy-2025.18.0-win32-x64/bundled/scripts/noConfigScripts/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/.vscode/extensions/ms-python.debugpy-2025.18.0-win32-x64/bundled/scripts/noConfigScripts/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Users/gisle/.vscode/extensions/ms-python.debugpy-2025.18.0-win32-x64/bundled/scripts/noConfigScripts/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/CMake/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/CMake/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/SDL2_mixerConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/sdl2_mixer-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/lib/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/lib/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/share/cps/SDL2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/share/cps/sdl2_mixer.cps"
+        mode: "cps"
+        reason: "no_exist"
+    found: null
+    search_context:
+      CMAKE_PREFIX_PATH:
+        - "C:/vcpkg/installed/x64-windows/debug"
+        - "C:/vcpkg/installed/x64-windows"
+      ENV{PATH}:
+        - "c:\\Users\\gisle\\AppData\\Roaming\\Code\\User\\globalStorage\\github.copilot-chat\\debugCommand"
+        - "c:\\Users\\gisle\\AppData\\Roaming\\Code\\User\\globalStorage\\github.copilot-chat\\copilotCli"
+        - "C:\\Users\\gisle\\AppData\\Local\\Programs\\Microsoft VS Code"
+        - "C:\\Python312\\Scripts\\"
+        - "C:\\Python312\\"
+        - "C:\\Program Files\\Eclipse Foundation\\jdk-8.0.302.8-hotspot\\bin"
+        - "C:\\Python310\\Scripts\\"
+        - "C:\\Python310\\"
+        - "C:\\windows\\system32"
+        - "C:\\windows"
+        - "C:\\windows\\System32\\Wbem"
+        - "C:\\windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files (x86)\\QuickTime\\QTSystem\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "C:\\WINDOWS\\system32"
+        - "C:\\WINDOWS"
+        - "C:\\WINDOWS\\System32\\Wbem"
+        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\WINDOWS\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files\\cursor\\resources\\app\\bin"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Users\\gisle\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\Users\\gisle\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\gisle\\.dotnet\\tools"
+        - "C:\\Users\\gisle\\AppData\\Local\\GitHubDesktop\\bin"
+        - "C:\\Program Files\\JetBrains\\IntelliJ IDEA 2024.3\\bin"
+        - "C:\\Users\\gisle\\AppData\\Roaming\\npm"
+        - "C:\\Users\\gisle\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\gisle\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "c:\\Users\\gisle\\.vscode\\extensions\\ms-python.debugpy-2025.18.0-win32-x64\\bundled\\scripts\\noConfigScripts"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/ThendoriaPort"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files (x86)/ThendoriaPort"
+      CMAKE_FIND_ROOT_PATH: "C:/vcpkg/installed/x64-windows/debug;C:/vcpkg/installed/x64-windows"
+...
