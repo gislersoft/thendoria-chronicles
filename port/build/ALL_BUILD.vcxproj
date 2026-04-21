@@ -174,6 +174,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </ProjectReference>
+    <ProjectReference Include="C:\TURBOC3\SRC\port\build\thendoria_map_editor.vcxproj">
+      <Project>{15879C32-9840-3E1B-ABC2-D76E7A388239}</Project>
+      <Name>thendoria_map_editor</Name>
+    </ProjectReference>
     <ProjectReference Include="C:\TURBOC3\SRC\port\build\thendoria_port.vcxproj">
       <Project>{41166222-94C2-3F91-9662-7738D4017A0E}</Project>
       <Name>thendoria_port</Name>

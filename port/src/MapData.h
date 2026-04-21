@@ -23,6 +23,7 @@ public:
     static constexpr int kSize = 40;
 
     bool loadFromFile(const std::string &path);
+    bool saveToFile(const std::string &path) const;
     const MapObject &at(int x, int y) const;
     MapObject &atMutable(int x, int y);
 

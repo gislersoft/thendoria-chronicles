@@ -20,7 +20,13 @@ add_executable(thendoria_port
     src/IntroScreen.cpp
 )
 
+add_executable(thendoria_map_editor
+    src/MapEditor.cpp
+    src/MapData.cpp
+)
+
 target_link_libraries(thendoria_port PRIVATE SDL2::SDL2 SDL2::SDL2main SDL2_image::SDL2_image)
+target_link_libraries(thendoria_map_editor PRIVATE SDL2::SDL2 SDL2::SDL2main SDL2_image::SDL2_image)
 
 if(SDL2_mixer_FOUND)
     target_link_libraries(thendoria_port PRIVATE $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
@@ -29,6 +35,8 @@ endif()
 
 if(MSVC)
     target_compile_options(thendoria_port PRIVATE /W4)
+    target_compile_options(thendoria_map_editor PRIVATE /W4)
 else()
     target_compile_options(thendoria_port PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(thendoria_map_editor PRIVATE -Wall -Wextra -Wpedantic)
 endif()
