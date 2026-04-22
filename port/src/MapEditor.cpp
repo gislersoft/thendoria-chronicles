@@ -297,6 +297,18 @@ bool pointInRect(int x, int y, const SDL_Rect &r) {
     return x >= r.x && x < (r.x + r.w) && y >= r.y && y < (r.y + r.h);
 }
 
+bool isIconCommand(CommandId id) {
+    return id == CMD_OPEN || id == CMD_SAVE || id == CMD_EXIT;
+}
+
+SDL_Rect clickRectForButton(const Button &b) {
+    // For icon buttons, clicks apply to the whole button rectangle.
+    if (isIconCommand(b.id)) {
+        return b.rect;
+    }
+    return b.rect;
+}
+
 const Button *findButton(const std::vector<Button> &buttons, CommandId id) {
     for (const auto &b : buttons) {
         if (b.id == id) {
@@ -590,6 +602,7 @@ int main(int argc, char **argv) {
     int tilePickTargetCount = 1;
     int tilePickIndex = 0;
     bool showNeighborhoodPreview = true;
+    int previewZoom = 1; // 1=100%, 2=200%, etc.
 
     InputState inputState;
 
@@ -750,22 +763,27 @@ int main(int argc, char **argv) {
             }
 
             if (e.type == SDL_MOUSEWHEEL) {
+                // Palette scroll
                 if (mouseX >= kPaletteX && mouseX < (kPaletteX + kPaletteCols * kPaletteCell) &&
                     mouseY >= kPaletteY && mouseY < (kPaletteY + kPaletteRowsVisible * kPaletteCell)) {
                     paletteOffsetRow = std::max(0, paletteOffsetRow - e.wheel.y);
                     const int maxOffset = std::max(0, tilesPerCol - kPaletteRowsVisible);
                     paletteOffsetRow = std::min(maxOffset, paletteOffsetRow);
                 }
+
+                // Preview zoom scroll: global (en cualquier parte de la ventana)
+                if (e.wheel.y > 0) previewZoom = std::min(previewZoom + 1, 4);
+                else if (e.wheel.y < 0) previewZoom = std::max(previewZoom - 1, 1);
             }
 
             if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
-                mouseHeld = true;
                 const int x = e.button.x;
                 const int y = e.button.y;
 
                 CommandId clicked = CMD_NONE;
                 for (const auto &b : buttons) {
-                    if (pointInRect(x, y, b.rect)) {
+                    const SDL_Rect hit = clickRectForButton(b);
+                    if (pointInRect(x, y, hit)) {
                         clicked = b.id;
                         break;
                     }
@@ -950,6 +968,7 @@ int main(int argc, char **argv) {
                     const int ty = camY + (y / kCellPx);
                     if (tx >= 0 && tx < kMapSize && ty >= 0 && ty < kMapSize) {
                         if (!copyMode) {
+                            mouseHeld = true;
                             map.atMutable(tx, ty) = actual;
                             dirty = true;
                         } else {
@@ -963,25 +982,18 @@ int main(int argc, char **argv) {
             }
 
             // Soporte para click sostenido (drag/hold) en el grid
-            if ((e.type == SDL_MOUSEMOTION && (e.motion.state & SDL_BUTTON_LMASK)) ||
-                (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT)) {
-                // Usar la posición actual del mouse
-                int x = (e.type == SDL_MOUSEMOTION) ? e.motion.x : e.button.x;
-                int y = (e.type == SDL_MOUSEMOTION) ? e.motion.y : e.button.y;
+            if (e.type == SDL_MOUSEMOTION && mouseHeld && (e.motion.state & SDL_BUTTON_LMASK)) {
+                // Usar la posición actual del mouse durante arrastre
+                int x = e.motion.x;
+                int y = e.motion.y;
 
                 // Solo pintar si el mouse está sobre el grid
                 if (x >= 0 && x < kMapViewW && y >= 0 && y < kMapViewH) {
                     const int tx = camX + (x / kCellPx);
                     const int ty = camY + (y / kCellPx);
                     if (tx >= 0 && tx < kMapSize && ty >= 0 && ty < kMapSize) {
-                        if (!copyMode) {
-                            map.atMutable(tx, ty) = actual;
-                            dirty = true;
-                        } else if (e.type == SDL_MOUSEBUTTONDOWN) {
-                            pegado = map.at(tx, ty);
-                            actual = pegado;
-                            copyMode = false;
-                        }
+                        map.atMutable(tx, ty) = actual;
+                        dirty = true;
                     }
                     setWindowTitle(window, currentMapPath, camX, camY, dirty, copyMode);
                 }
@@ -1053,45 +1065,71 @@ int main(int argc, char **argv) {
         }
 
         // 5x5 neighborhood preview — siempre visible y centrada respecto a la paleta
-        const int pCell = 16; // tamaño de celda
-        const int pCols = 15;  // columnas
-        const int pRows = 5;   // filas
-        // Centro de la paleta
-        const int paletteCenterX = kPaletteX + (kPaletteCols * kPaletteCell) / 2;
-        // Centrar la vista respecto a la paleta
-        const int previewX = paletteCenterX - (pCols * pCell) / 2;
-        const int previewY = kPaletteY + kPaletteRowsVisible * kPaletteCell + 18 - 30;
-        // Usar el tile bajo el mouse, o el centro de la vista si el mouse no está sobre el mapa
-        int centerX = camX + kViewTilesX / 2;
-        int centerY = camY + kViewTilesY / 2;
-        if (mouseX >= 0 && mouseX < kMapViewW && mouseY >= 0 && mouseY < kMapViewH) {
-            centerX = camX + (mouseX / kCellPx);
-            centerY = camY + (mouseY / kCellPx);
-        }
-        for (int py = 0; py < pRows; ++py) {
-            for (int px = 0; px < pCols; ++px) {
-                const int mx = centerX + px - pCols / 2;
-                const int my = centerY + py - pRows / 2;
-                SDL_Rect dst{previewX + px * pCell, previewY + py * pCell, pCell, pCell};
-                if (mx >= 0 && mx < kMapSize && my >= 0 && my < kMapSize) {
-                    const int tile1 = map.at(mx, my).tiles[0];
-                    if (tile1 > 0 && tile1 <= tileCount) {
-                        SDL_Rect src = tileSrcRect(tile1 - 1, tilesPerRow);
-                        SDL_RenderCopy(renderer, tileTexture, &src, &dst);
-                    } else {
-                        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-                        SDL_RenderFillRect(renderer, &dst);
+        // Vista previa con zoom — viewport fijo 15*16 x 7*16 px
+        {
+            const int viewportW = 15 * 16;   // 240px fijo
+            const int viewportH = 7 * 16;    // 112px fijo
+            const int pCell = 16 * previewZoom;
+            const int paletteCenterX2 = kPaletteX + (kPaletteCols * kPaletteCell) / 2;
+            const int previewX = paletteCenterX2 - viewportW / 2;
+            const int previewY = kPaletteY + kPaletteRowsVisible * kPaletteCell + 18 - 30;
+
+            // Tile bajo el mouse o centro del mapa
+            int centerX = camX + kViewTilesX / 2;
+            int centerY = camY + kViewTilesY / 2;
+            if (mouseX >= 0 && mouseX < kMapViewW && mouseY >= 0 && mouseY < kMapViewH) {
+                centerX = camX + (mouseX / kCellPx);
+                centerY = camY + (mouseY / kCellPx);
+            }
+
+            // Clip al viewport
+            SDL_Rect clipRect{previewX, previewY, viewportW, viewportH};
+            SDL_RenderSetClipRect(renderer, &clipRect);
+
+            // Relleno de fondo
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderFillRect(renderer, &clipRect);
+
+            // Posición en pantalla del tile central (esquina superior-izquierda)
+            const int cxScreen = previewX + viewportW / 2 - pCell / 2;
+            const int cyScreen = previewY + viewportH / 2 - pCell / 2;
+
+            // Radio de tiles necesario para cubrir el viewport
+            const int radX = viewportW / pCell + 2;
+            const int radY = viewportH / pCell + 2;
+
+            for (int dy = -radY; dy <= radY; ++dy) {
+                for (int dx = -radX; dx <= radX; ++dx) {
+                    const int mx = centerX + dx;
+                    const int my = centerY + dy;
+                    SDL_Rect dst{cxScreen + dx * pCell, cyScreen + dy * pCell, pCell, pCell};
+                    if (mx >= 0 && mx < kMapSize && my >= 0 && my < kMapSize) {
+                        const int tile1 = map.at(mx, my).tiles[0];
+                        if (tile1 > 0 && tile1 <= tileCount) {
+                            SDL_Rect src = tileSrcRect(tile1 - 1, tilesPerRow);
+                            SDL_RenderCopy(renderer, tileTexture, &src, &dst);
+                        }
+                        // tiles vacíos ya cubiertos por fondo negro
                     }
-                } else {
-                    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-                    SDL_RenderFillRect(renderer, &dst);
                 }
             }
+
+            // Quitar clip
+            SDL_RenderSetClipRect(renderer, nullptr);
+
+            // Highlight tile central
+            SDL_Rect centerRect{cxScreen, cyScreen, pCell, pCell};
+            SDL_SetRenderDrawColor(renderer, 244, 148, 64, 255);
+            SDL_RenderDrawRect(renderer, &centerRect);
+
+            // Etiqueta de zoom (top-right del viewport)
+            std::string zoomLabel = "zoom: " + std::to_string(previewZoom) + "x";
+            drawText(renderer,
+                     previewX + viewportW - static_cast<int>(zoomLabel.size()) * 7 * 1 - 2,
+                     previewY - 8,
+                     zoomLabel,
+                     SDL_Color{0, 0, 0, 255}, 1);
         }
-        // Highlight center tile
-        SDL_Rect centerRect{previewX + (pCols / 2) * pCell, previewY + (pRows / 2) * pCell, pCell, pCell};
-        SDL_SetRenderDrawColor(renderer, 244, 148, 64, 255);
-        SDL_RenderDrawRect(renderer, &centerRect);
 
         // Info panels
         // Info panels: 2×2 grid in bottom-left zone (below map view)
