@@ -68,6 +68,7 @@ const SDL_Color kColTitle = {255, 220, 64, 255};
 enum CommandId {
     CMD_NONE = 0,
     CMD_SAVE = 1,
+    CMD_SAVE_AS = 19,
     CMD_OPEN = 2,
     CMD_EXIT = 3,
     CMD_ACCION = 4,
@@ -332,8 +333,9 @@ std::vector<Button> buildButtons() {
     add(kPanelX + 96, 340, 90, 24, CMD_USE_MODIFIED, "MODIF");
 
     add(kPanelX, 370, 90, 24, CMD_SAVE, "GUARDAR");
-    add(kPanelX + 96, 370, 90, 24, CMD_OPEN, "ABRIR");
-    add(kPanelX + 192, 370, 90, 24, CMD_EXIT, "SALIR");
+    add(kPanelX + 96, 370, 90, 24, CMD_SAVE_AS, "GUARDAR COMO");
+    add(kPanelX + 192, 370, 90, 24, CMD_OPEN, "ABRIR");
+    add(kPanelX + 288, 370, 90, 24, CMD_EXIT, "SALIR");
     return out;
 }
 
@@ -768,14 +770,66 @@ int main(int argc, char **argv) {
 
                 if (clicked != CMD_NONE) {
                     switch (clicked) {
-                        case CMD_SAVE:
-                            if (map.saveToFile(currentMapPath)) {
-                                std::cout << "Saved map: " << currentMapPath << '\n';
-                                dirty = false;
-                            } else {
-                                std::cout << "Failed to save map: " << currentMapPath << '\n';
+                        case CMD_SAVE: {
+                            // Confirmación antes de sobrescribir
+                            SDL_MessageBoxButtonData buttons[2];
+                            buttons[0].flags = SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
+                            buttons[0].buttonid = 1;
+                            buttons[0].text = "Sí";
+                            buttons[1].flags = SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
+                            buttons[1].buttonid = 0;
+                            buttons[1].text = "No";
+                            std::string msg = "¿Deseas sobrescribir el archivo actual?\n" + currentMapPath;
+                            SDL_MessageBoxData mbox = {};
+                            mbox.flags = SDL_MESSAGEBOX_WARNING;
+                            mbox.window = window;
+                            mbox.title = "Confirmar Guardado";
+                            mbox.message = msg.c_str();
+                            mbox.numbuttons = 2;
+                            mbox.buttons = buttons;
+                            mbox.colorScheme = NULL;
+                            int buttonid = -1;
+                            SDL_ShowMessageBox(&mbox, &buttonid);
+                            if (buttonid == 1) {
+                                if (map.saveToFile(currentMapPath)) {
+                                    std::cout << "Saved map: " << currentMapPath << '\n';
+                                    dirty = false;
+                                } else {
+                                    std::cout << "Failed to save map: " << currentMapPath << '\n';
+                                }
                             }
                             break;
+                        }
+                        case CMD_SAVE_AS: {
+                            // Diálogo nativo para guardar como
+                            std::string savePath;
+                            std::string defaultDir = "MAPS";
+#if defined(_WIN32)
+                            char fileBuffer[MAX_PATH] = {0};
+                            OPENFILENAMEA ofn = {0};
+                            ofn.lStructSize = sizeof(ofn);
+                            ofn.hwndOwner = NULL;
+                            ofn.lpstrFile = fileBuffer;
+                            ofn.nMaxFile = MAX_PATH;
+                            ofn.lpstrFilter = "Map files (*.txt)\0*.txt\0All files (*.*)\0*.*\0";
+                            ofn.lpstrInitialDir = defaultDir.c_str();
+                            ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+                            ofn.lpstrDefExt = "txt";
+                            if (GetSaveFileNameA(&ofn)) {
+                                savePath = fileBuffer;
+                            }
+#endif
+                            if (!savePath.empty()) {
+                                if (map.saveToFile(savePath)) {
+                                    std::cout << "Saved map: " << savePath << '\n';
+                                    currentMapPath = savePath;
+                                    dirty = false;
+                                } else {
+                                    std::cout << "Failed to save map: " << savePath << '\n';
+                                }
+                            }
+                            break;
+                        }
                         case CMD_OPEN: {
                             requestOpenMap();
                             break;
