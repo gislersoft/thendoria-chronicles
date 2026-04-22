@@ -186,11 +186,101 @@ std::string resolveMapPath(const std::string &baseName) {
     return std::string();
 }
 
+struct LaunchOptions {
+    bool hasMap = false;
+    bool hasX = false;
+    bool hasY = false;
+    std::string mapName;
+    int startX = 0;
+    int startY = 0;
+};
+
+bool parseInt(const std::string &s, int &out) {
+    try {
+        size_t idx = 0;
+        int v = std::stoi(s, &idx, 10);
+        if (idx != s.size()) {
+            return false;
+        }
+        out = v;
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+LaunchOptions parseLaunchOptions(int argc, char **argv) {
+    LaunchOptions options;
+
+    auto toLower = [](std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
+            return static_cast<char>(std::tolower(c));
+        });
+        return s;
+    };
+
+    for (int i = 1; i < argc; ++i) {
+        if (!argv[i]) {
+            continue;
+        }
+
+        std::string arg = argv[i];
+        if (arg.empty()) {
+            continue;
+        }
+
+        while (!arg.empty() && (arg[0] == '-' || arg[0] == '/')) {
+            arg.erase(arg.begin());
+        }
+        if (arg.empty()) {
+            continue;
+        }
+
+        std::string key;
+        std::string value;
+        const size_t eq = arg.find('=');
+        if (eq != std::string::npos) {
+            key = arg.substr(0, eq);
+            value = arg.substr(eq + 1);
+        } else {
+            key = arg;
+            if (i + 1 < argc && argv[i + 1]) {
+                std::string next = argv[i + 1];
+                if (!next.empty() && next[0] != '-' && next[0] != '/') {
+                    value = next;
+                    ++i;
+                }
+            }
+        }
+
+        key = toLower(key);
+        if (key == "map") {
+            if (!value.empty()) {
+                options.hasMap = true;
+                options.mapName = value;
+            }
+        } else if (key == "x") {
+            int parsed = 0;
+            if (parseInt(value, parsed)) {
+                options.hasX = true;
+                options.startX = parsed;
+            }
+        } else if (key == "y") {
+            int parsed = 0;
+            if (parseInt(value, parsed)) {
+                options.hasY = true;
+                options.startY = parsed;
+            }
+        }
+    }
+
+    return options;
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
-    (void)argc;
-    (void)argv;
+    const LaunchOptions launchOptions = parseLaunchOptions(argc, argv);
 
     const std::uint32_t appLaunchTicks = SDL_GetTicks();
 
@@ -304,12 +394,21 @@ int main(int argc, char **argv) {
     }
 
     MapData world;
-    const std::string mapPath = firstExistingPath({
+    std::string mapPath;
+    if (launchOptions.hasMap) {
+        mapPath = resolveMapPath(launchOptions.mapName);
+        if (mapPath.empty()) {
+            std::cout << "Could not resolve map from -map=" << launchOptions.mapName << ". Falling back to default map.\n";
+        }
+    }
+    if (mapPath.empty()) {
+        mapPath = firstExistingPath({
         "MAPS/CASA.TXT",
         "../MAPS/CASA.TXT",
         "maps/CASA.TXT",
         "../maps/CASA.TXT"
-    });
+        });
+    }
     bool mapLoaded = false;
     if (!mapPath.empty()) {
         mapLoaded = world.loadFromFile(mapPath);
@@ -320,6 +419,12 @@ int main(int argc, char **argv) {
 
     int xpos_actual = 20;
     int ypos_actual = 18;
+    if (launchOptions.hasX) {
+        xpos_actual = std::clamp(launchOptions.startX, 0, MapData::kSize - 1);
+    }
+    if (launchOptions.hasY) {
+        ypos_actual = std::clamp(launchOptions.startY, 0, MapData::kSize - 1);
+    }
     int xpos_ref = xpos_actual;
     int ypos_ref = ypos_actual;
     int xpos_scroll = 0;
@@ -417,7 +522,11 @@ int main(int argc, char **argv) {
 
     // Play intro sequence
     IntroScreen intro;
-    intro.playFullIntro(graph, font, renderer, appLaunchTicks);
+    if (!launchOptions.hasMap) {
+        intro.playFullIntro(graph, font, renderer, appLaunchTicks);
+    } else {
+        std::cout << "Quick start enabled (map argument provided): skipping intro." << '\n';
+    }
 
 #if defined(THENDORIA_HAVE_SDL_MIXER)
     Mix_Music *exploreMusic = nullptr;
