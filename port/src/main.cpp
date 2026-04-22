@@ -277,6 +277,42 @@ LaunchOptions parseLaunchOptions(int argc, char **argv) {
     return options;
 }
 
+std::filesystem::path findProjectRoot(const std::vector<std::filesystem::path> &seeds) {
+    auto looksLikeRoot = [](const std::filesystem::path &p) {
+        return std::filesystem::exists(p / "MAPS") &&
+               std::filesystem::exists(p / "DIALOGS") &&
+               std::filesystem::exists(p / "IMG");
+    };
+
+    for (const auto &seed : seeds) {
+        if (seed.empty()) {
+            continue;
+        }
+
+        std::filesystem::path p = seed;
+        if (!p.is_absolute()) {
+            p = std::filesystem::absolute(p);
+        }
+        p = p.lexically_normal();
+
+        for (int up = 0; up < 8; ++up) {
+            if (looksLikeRoot(p)) {
+                return p;
+            }
+            if (!p.has_parent_path()) {
+                break;
+            }
+            const std::filesystem::path parent = p.parent_path();
+            if (parent == p) {
+                break;
+            }
+            p = parent;
+        }
+    }
+
+    return std::filesystem::path();
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
@@ -287,6 +323,23 @@ int main(int argc, char **argv) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0) {
         std::cerr << "SDL_Init failed: " << SDL_GetError() << '\n';
         return 1;
+    }
+
+    {
+        std::vector<std::filesystem::path> seeds;
+        seeds.push_back(std::filesystem::current_path());
+
+        char *basePath = SDL_GetBasePath();
+        if (basePath) {
+            seeds.push_back(std::filesystem::path(basePath));
+            SDL_free(basePath);
+        }
+
+        const std::filesystem::path root = findProjectRoot(seeds);
+        if (!root.empty()) {
+            std::filesystem::current_path(root);
+            std::cout << "Runtime root: " << root.string() << '\n';
+        }
     }
 
     SDL_Window *window = SDL_CreateWindow(

@@ -19,6 +19,7 @@
 #endif
 #include <windows.h>
 #include <commdlg.h>
+#include <shellapi.h>
 #endif
 
 namespace {
@@ -478,6 +479,128 @@ bool pickMapFileDialog(std::string &selectedPath, const std::string &currentMapP
 #endif
 }
 
+bool saveMapAsDialog(MapData &map, std::string &currentMapPath, SDL_Window *ownerWindow) {
+#if defined(_WIN32)
+    std::array<char, MAX_PATH> fileBuffer{};
+
+    std::filesystem::path mapPath(currentMapPath);
+    std::filesystem::path initDir = mapPath.has_parent_path() ? mapPath.parent_path() : std::filesystem::path("MAPS");
+    std::string initDirStr = initDir.string();
+
+    OPENFILENAMEA ofn{};
+    ofn.lStructSize = sizeof(ofn);
+    if (ownerWindow) {
+        SDL_SysWMinfo wmInfo;
+        SDL_VERSION(&wmInfo.version);
+        if (SDL_GetWindowWMInfo(ownerWindow, &wmInfo) == SDL_TRUE) {
+            ofn.hwndOwner = wmInfo.info.win.window;
+        }
+    }
+    ofn.lpstrFile = fileBuffer.data();
+    ofn.nMaxFile = static_cast<DWORD>(fileBuffer.size());
+    ofn.lpstrFilter = "Map files (*.txt)\0*.txt\0All files (*.*)\0*.*\0";
+    ofn.lpstrInitialDir = initDirStr.empty() ? nullptr : initDirStr.c_str();
+    ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+    ofn.lpstrDefExt = "txt";
+
+    if (!GetSaveFileNameA(&ofn)) {
+        return false;
+    }
+
+    const std::string savePath = fileBuffer.data();
+    if (savePath.empty()) {
+        return false;
+    }
+
+    if (!map.saveToFile(savePath)) {
+        std::cout << "Failed to save map: " << savePath << '\n';
+        return false;
+    }
+
+    std::cout << "Saved map: " << savePath << '\n';
+    currentMapPath = savePath;
+    return true;
+#else
+    (void)map;
+    (void)currentMapPath;
+    (void)ownerWindow;
+    return false;
+#endif
+}
+
+std::string resolveGameplayExePath() {
+    std::vector<std::string> candidates;
+
+#if defined(_WIN32)
+    // Absolute candidates based on the editor executable location (highest priority).
+    std::array<char, MAX_PATH> modulePath{};
+    const DWORD len = GetModuleFileNameA(nullptr, modulePath.data(), static_cast<DWORD>(modulePath.size()));
+    if (len > 0) {
+        std::filesystem::path editorExe(modulePath.data());
+        const std::filesystem::path editorDir = editorExe.parent_path();
+        candidates.push_back((editorDir / "thendoria_port.exe").string());
+        candidates.push_back((editorDir / "Release" / "thendoria_port.exe").string());
+        candidates.push_back((editorDir.parent_path() / "Release" / "thendoria_port.exe").string());
+        candidates.push_back((editorDir.parent_path() / "thendoria_port.exe").string());
+    }
+#endif
+
+    // Relative candidates from current working directory.
+    const std::vector<std::string> rel = {
+        "thendoria_port.exe",
+        "Release/thendoria_port.exe",
+        "../Release/thendoria_port.exe",
+        "build/Release/thendoria_port.exe",
+        "../build/Release/thendoria_port.exe"
+    };
+    candidates.insert(candidates.end(), rel.begin(), rel.end());
+
+    for (const auto &c : candidates) {
+        if (c.empty()) {
+            continue;
+        }
+
+        std::filesystem::path p(c);
+        if (p.is_relative()) {
+            p = std::filesystem::absolute(p);
+        }
+        p = p.lexically_normal();
+
+        if (std::filesystem::exists(p) && std::filesystem::is_regular_file(p)) {
+            return p.string();
+        }
+    }
+
+    return std::string();
+}
+
+bool launchGameplayFromEditor(const std::string &mapPath, int startX, int startY) {
+    const std::string exePath = resolveGameplayExePath();
+    if (exePath.empty()) {
+        std::cout << "Could not locate thendoria_port.exe" << '\n';
+        return false;
+    }
+
+    const std::string mapArg = mapPath;
+
+#if defined(_WIN32)
+    const std::string args = "-map=\"" + mapArg + "\" -x=" + std::to_string(startX) + " -y=" + std::to_string(startY);
+    const std::string launchDir = std::filesystem::path(exePath).parent_path().string();
+    HINSTANCE res = ShellExecuteA(nullptr, "open", exePath.c_str(), args.c_str(), launchDir.empty() ? nullptr : launchDir.c_str(), SW_SHOWNORMAL);
+    if (reinterpret_cast<intptr_t>(res) <= 32) {
+        std::cout << "Failed to launch gameplay executable: " << exePath << '\n';
+        return false;
+    }
+    std::cout << "Launching: " << exePath << " " << args << '\n';
+    return true;
+#else
+    const std::string cmd = "\"" + exePath + "\" -map=\"" + mapArg + "\" -x=" + std::to_string(startX) + " -y=" + std::to_string(startY);
+    const int rc = std::system(cmd.c_str());
+    (void)rc;
+    return true;
+#endif
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
@@ -587,7 +710,7 @@ int main(int argc, char **argv) {
     std::cout << "TILCRE PORT - COMMANDS\n";
     std::cout << " Buttons are clickable like old tool.\n";
     std::cout << " Keyboard shortcuts:\n";
-    std::cout << "  ARROWS pan map, ESC exits, S save, O open\n";
+    std::cout << "  ARROWS pan map, ESC exits, S save, O open, P play\n";
 
     int camX = 0;
     int camY = 0;
@@ -643,6 +766,10 @@ int main(int argc, char **argv) {
         inputState.active = true;
         SDL_StartTextInput();
 #endif
+    };
+
+    auto requestSaveAs = [&]() {
+        return saveMapAsDialog(map, currentMapPath, window);
     };
 
     setWindowTitle(window, currentMapPath, camX, camY, dirty, copyMode);
@@ -752,6 +879,30 @@ int main(int argc, char **argv) {
                         requestOpenMap();
                         break;
                     }
+                    case SDLK_p: {
+                        int startX = 19;
+                        int startY = 19;
+
+                        if (mouseX >= 0 && mouseX < kMapViewW && mouseY >= 0 && mouseY < kMapViewH) {
+                            startX = camX + (mouseX / kCellPx);
+                            startY = camY + (mouseY / kCellPx);
+                        }
+
+                        startX = std::clamp(startX, 0, kMapSize - 1);
+                        startY = std::clamp(startY, 0, kMapSize - 1);
+
+                        const bool needsSaveAs = dirty || currentMapPath.empty() || !std::filesystem::exists(currentMapPath);
+                        if (needsSaveAs) {
+                            if (!requestSaveAs()) {
+                                std::cout << "Play launch canceled (map was not saved).\n";
+                                break;
+                            }
+                            dirty = false;
+                        }
+
+                        launchGameplayFromEditor(currentMapPath, startX, startY);
+                        break;
+                    }
                     case SDLK_z:
                         showNeighborhoodPreview = !showNeighborhoodPreview;
                         break;
@@ -822,32 +973,8 @@ int main(int argc, char **argv) {
                             break;
                         }
                         case CMD_SAVE_AS: {
-                            // Diálogo nativo para guardar como
-                            std::string savePath;
-                            std::string defaultDir = "MAPS";
-#if defined(_WIN32)
-                            char fileBuffer[MAX_PATH] = {0};
-                            OPENFILENAMEA ofn = {0};
-                            ofn.lStructSize = sizeof(ofn);
-                            ofn.hwndOwner = NULL;
-                            ofn.lpstrFile = fileBuffer;
-                            ofn.nMaxFile = MAX_PATH;
-                            ofn.lpstrFilter = "Map files (*.txt)\0*.txt\0All files (*.*)\0*.*\0";
-                            ofn.lpstrInitialDir = defaultDir.c_str();
-                            ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
-                            ofn.lpstrDefExt = "txt";
-                            if (GetSaveFileNameA(&ofn)) {
-                                savePath = fileBuffer;
-                            }
-#endif
-                            if (!savePath.empty()) {
-                                if (map.saveToFile(savePath)) {
-                                    std::cout << "Saved map: " << savePath << '\n';
-                                    currentMapPath = savePath;
-                                    dirty = false;
-                                } else {
-                                    std::cout << "Failed to save map: " << savePath << '\n';
-                                }
+                            if (requestSaveAs()) {
+                                dirty = false;
                             }
                             break;
                         }
