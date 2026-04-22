@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -82,7 +83,6 @@ enum CommandId {
     CMD_NOMBRE = 11,
     CMD_ARCHIVO = 12,
     CMD_COPY_MODE = 13,
-    CMD_USE_CLIPBOARD = 14,
     CMD_USE_MODIFIED = 15,
     CMD_MAP_CLICK = 16,
     CMD_FILL = 17,
@@ -338,14 +338,12 @@ std::vector<Button> buildButtons() {
     add(kPanelX, y, w, h, CMD_NOMBRE, "NOMBRE"); y += 28;
     add(kPanelX, y, w, h, CMD_ARCHIVO, "ARCHIVO");
 
-    add(kPanelX, 310, 90, 24, CMD_COPY_MODE, "COPIAR");
-    add(kPanelX + 96, 310, 90, 24, CMD_FILL, "LLENAR");
-    add(kPanelX + 192, 310, 90, 24, CMD_CLONE, "CLONAR");
+    add(kPanelX, 310, 90, 24, CMD_FILL, "LLENAR");
+    add(kPanelX + 96, 310, 90, 24, CMD_CLONE, "CLONAR");
     add(kPanelX + 192, 370, 90, 24, CMD_EXIT, "SALIR");
 
-    add(kPanelX, 340, 90, 24, CMD_USE_CLIPBOARD, "PEGAR");
-    add(kPanelX + 96, 340, 90, 24, CMD_USE_MODIFIED, "MODIF");
-    add(kPanelX + 192, 340, 126, 24, CMD_SAVE_AS, "GUARD COMO");
+    add(kPanelX, 340, 90, 24, CMD_USE_MODIFIED, "MODIF");
+    add(kPanelX + 96, 340, 126, 24, CMD_SAVE_AS, "GUARD COMO");
 
     add(kPanelX, 370, 90, 24, CMD_OPEN, "ABRIR");
     add(kPanelX + 96, 370, 90, 24, CMD_SAVE, "GUARD");
@@ -427,14 +425,11 @@ void drawInputOverlay(SDL_Renderer *renderer, const InputState &inp) {
              SDL_Color{160, 170, 190, 255}, 1);
 }
 
-void setWindowTitle(SDL_Window *window, const std::string &mapPath, int camX, int camY, bool dirty, bool copyMode) {
+void setWindowTitle(SDL_Window *window, const std::string &mapPath, int camX, int camY, bool dirty) {
     if (!window) {
         return;
     }
     std::string t = "Thendoria Map Editor - " + mapPath + " | cam=" + std::to_string(camX) + "," + std::to_string(camY);
-    if (copyMode) {
-        t += " | COPY";
-    }
     if (dirty) {
         t += " *";
     }
@@ -604,6 +599,7 @@ bool launchGameplayFromEditor(const std::string &mapPath, int startX, int startY
 } // namespace
 
 int main(int argc, char **argv) {
+    SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::cerr << "SDL_Init failed: " << SDL_GetError() << '\n';
         return 1;
@@ -710,7 +706,7 @@ int main(int argc, char **argv) {
     std::cout << "TILCRE PORT - COMMANDS\n";
     std::cout << " Buttons are clickable like old tool.\n";
     std::cout << " Keyboard shortcuts:\n";
-    std::cout << "  ARROWS pan map, ESC exits, S save, O open, P play\n";
+    std::cout << "  ARROWS pan map, ESC exits, S save, O open, P play, CTRL+C copy-under-mouse\n";
 
     int camX = 0;
     int camY = 0;
@@ -719,19 +715,19 @@ int main(int argc, char **argv) {
 
     bool running = true;
     bool dirty = false;
-    bool copyMode = false;
 
     bool tilePickMode = false;
     int tilePickTargetCount = 1;
     int tilePickIndex = 0;
     bool showNeighborhoodPreview = true;
     int previewZoom = 1; // 1=100%, 2=200%, etc.
+    constexpr std::size_t kUndoLimit = 64;
+    std::deque<MapData> undoStack;
 
     InputState inputState;
 
     MapObject actual = defaultObject();
     MapObject modificado = defaultObject();
-    MapObject pegado = defaultObject();
 
     actual.tiles[0] = 1;
     modificado.tiles[0] = 1;
@@ -745,6 +741,7 @@ int main(int argc, char **argv) {
             camX = 0;
             camY = 0;
             dirty = false;
+            undoStack.clear();
             std::cout << "Opened: " << currentMapPath << '\n';
         } else {
             std::cout << "Failed to open: " << path << '\n';
@@ -772,7 +769,50 @@ int main(int argc, char **argv) {
         return saveMapAsDialog(map, currentMapPath, window);
     };
 
-    setWindowTitle(window, currentMapPath, camX, camY, dirty, copyMode);
+    auto copyTileUnderMouse = [&](int screenX, int screenY) {
+        if (screenX < 0 || screenX >= kMapViewW || screenY < 0 || screenY >= kMapViewH) {
+            std::cout << "Ctrl+C requires the mouse to be over the grid.\n";
+            return false;
+        }
+
+        const int tx = camX + (screenX / kCellPx);
+        const int ty = camY + (screenY / kCellPx);
+        if (tx < 0 || tx >= kMapSize || ty < 0 || ty >= kMapSize) {
+            return false;
+        }
+
+        actual = map.at(tx, ty);
+        std::cout << "Copied tile at " << tx << "," << ty << "\n";
+        return true;
+    };
+
+    auto pushUndoSnapshot = [&]() {
+        if (undoStack.size() >= kUndoLimit) {
+            undoStack.pop_front();
+        }
+        undoStack.push_back(map);
+    };
+
+    auto pasteTileUnderMouse = [&](int screenX, int screenY) {
+        if (screenX < 0 || screenX >= kMapViewW || screenY < 0 || screenY >= kMapViewH) {
+            std::cout << "Ctrl+V requires the mouse to be over the grid.\n";
+            return false;
+        }
+
+        const int tx = camX + (screenX / kCellPx);
+        const int ty = camY + (screenY / kCellPx);
+        if (tx < 0 || tx >= kMapSize || ty < 0 || ty >= kMapSize) {
+            return false;
+        }
+
+        pushUndoSnapshot();
+        map.atMutable(tx, ty) = actual;
+        dirty = true;
+        std::cout << "Pasted tile at " << tx << "," << ty << "\n";
+        return true;
+    };
+
+    setWindowTitle(window, currentMapPath, camX, camY, dirty);
 
     bool mouseHeld = false;
     while (running) {
@@ -844,7 +884,7 @@ int main(int argc, char **argv) {
                                 SDL_StopTextInput();
                                 break;
                         }
-                        setWindowTitle(window, currentMapPath, camX, camY, dirty, copyMode);
+                        setWindowTitle(window, currentMapPath, camX, camY, dirty);
                     }
                 }
                 continue; // eat all other events while input overlay is open
@@ -879,6 +919,16 @@ int main(int argc, char **argv) {
                         requestOpenMap();
                         break;
                     }
+                    case SDLK_c:
+                        if ((e.key.keysym.mod & KMOD_CTRL) != 0) {
+                            copyTileUnderMouse(mouseX, mouseY);
+                        }
+                        break;
+                    case SDLK_v:
+                        if ((e.key.keysym.mod & KMOD_CTRL) != 0) {
+                            pasteTileUnderMouse(mouseX, mouseY);
+                        }
+                        break;
                     case SDLK_p: {
                         int startX = 19;
                         int startY = 19;
@@ -904,13 +954,22 @@ int main(int argc, char **argv) {
                         break;
                     }
                     case SDLK_z:
-                        showNeighborhoodPreview = !showNeighborhoodPreview;
+                        if ((e.key.keysym.mod & KMOD_CTRL) != 0) {
+                            if (!undoStack.empty()) {
+                                map = undoStack.back();
+                                undoStack.pop_back();
+                                dirty = true;
+                                std::cout << "Undo applied.\n";
+                            }
+                        } else {
+                            showNeighborhoodPreview = !showNeighborhoodPreview;
+                        }
                         break;
                     default:
                         break;
                 }
 
-                setWindowTitle(window, currentMapPath, camX, camY, dirty, copyMode);
+                setWindowTitle(window, currentMapPath, camX, camY, dirty);
             }
 
             if (e.type == SDL_MOUSEWHEEL) {
@@ -1036,18 +1095,11 @@ int main(int argc, char **argv) {
                             SDL_StartTextInput();
                             break;
                         }
-                        case CMD_COPY_MODE:
-                            copyMode = true;
-                            break;
-                        case CMD_USE_CLIPBOARD:
-                            actual = pegado;
-                            copyMode = false;
-                            break;
                         case CMD_USE_MODIFIED:
                             actual = modificado;
-                            copyMode = false;
                             break;
                         case CMD_FILL:
+                            pushUndoSnapshot();
                             for (int yy = 0; yy < kMapSize; ++yy) {
                                 for (int xx = 0; xx < kMapSize; ++xx) {
                                     map.atMutable(xx, yy) = actual;
@@ -1062,7 +1114,7 @@ int main(int argc, char **argv) {
                             break;
                     }
 
-                    setWindowTitle(window, currentMapPath, camX, camY, dirty, copyMode);
+                    setWindowTitle(window, currentMapPath, camX, camY, dirty);
                     continue;
                 }
 
@@ -1094,17 +1146,12 @@ int main(int argc, char **argv) {
                     const int tx = camX + (x / kCellPx);
                     const int ty = camY + (y / kCellPx);
                     if (tx >= 0 && tx < kMapSize && ty >= 0 && ty < kMapSize) {
-                        if (!copyMode) {
-                            mouseHeld = true;
-                            map.atMutable(tx, ty) = actual;
-                            dirty = true;
-                        } else {
-                            pegado = map.at(tx, ty);
-                            actual = pegado;
-                            copyMode = false;
-                        }
+                        pushUndoSnapshot();
+                        mouseHeld = true;
+                        map.atMutable(tx, ty) = actual;
+                        dirty = true;
                     }
-                    setWindowTitle(window, currentMapPath, camX, camY, dirty, copyMode);
+                    setWindowTitle(window, currentMapPath, camX, camY, dirty);
                 }
             }
 
@@ -1122,7 +1169,7 @@ int main(int argc, char **argv) {
                         map.atMutable(tx, ty) = actual;
                         dirty = true;
                     }
-                    setWindowTitle(window, currentMapPath, camX, camY, dirty, copyMode);
+                    setWindowTitle(window, currentMapPath, camX, camY, dirty);
                 }
             }
 
@@ -1164,8 +1211,7 @@ int main(int argc, char **argv) {
         // Buttons
         for (const auto &b : buttons) {
             bool hovered = pointInRect(mouseX, mouseY, b.rect);
-            bool active = (b.id == CMD_COPY_MODE && copyMode);
-            drawButton(renderer, b, hovered, active);
+            drawButton(renderer, b, hovered, false);
         }
 
         // Icon sprites for save/open/exit buttons (legacy ICO_TIL look).
@@ -1265,7 +1311,6 @@ int main(int argc, char **argv) {
         // Info panels: 2×2 grid in bottom-left zone (below map view)
         drawObjectPanel(renderer, "ACTUAL",     actual,    kInfoCol1X, kInfoRow1Y, SDL_Color{44, 160, 84, 255},  tileTexture, tileCount, tilesPerRow);
         drawObjectPanel(renderer, "MODIFICADO", modificado, kInfoCol1X, kInfoRow2Y, SDL_Color{112, 164, 216, 255}, tileTexture, tileCount, tilesPerRow);
-        drawObjectPanel(renderer, "PEGADO",     pegado,    kInfoCol1X, kInfoRow3Y, SDL_Color{255, 140, 64, 255}, tileTexture, tileCount, tilesPerRow);
 
         // Hover object details
         if (mouseX >= 0 && mouseX < kMapViewW && mouseY >= 0 && mouseY < kMapViewH) {
