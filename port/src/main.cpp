@@ -381,6 +381,22 @@ int main(int argc, char **argv) {
             case 1:
                 world.atMutable(tx, ty).tocado = true;
                 break;
+            case 3: {
+                // TELEACCION: actua sobre el objeto remoto en (x, y) del objeto activador.
+                const int rx = obj.x;
+                const int ry = obj.y;
+                if (rx >= 0 && rx < MapData::kSize && ry >= 0 && ry < MapData::kSize) {
+                    MapObject &remote = world.atMutable(rx, ry);
+                    // Legacy behavior: only affects ESTATICO targets.
+                    if (remote.estado == 0) {
+                        remote.solido = (remote.solido == 0) ? 1 : 0;
+                        remote.actual = (remote.actual == 0) ? 1 : 0;
+                        remote.tocado = true;
+                    }
+                }
+                world.atMutable(tx, ty).tocado = true;
+                break;
+            }
             case 4: {
                 const std::string newMapPath = resolveMapPath(obj.archivo);
                 if (!newMapPath.empty()) {

@@ -1122,8 +1122,11 @@ int main(int argc, char **argv) {
             SDL_SetRenderDrawColor(renderer, 244, 148, 64, 255);
             SDL_RenderDrawRect(renderer, &centerRect);
 
-            // Etiqueta de zoom (top-right del viewport)
-            std::string zoomLabel = "zoom: " + std::to_string(previewZoom) + "x";
+            // Etiqueta de estado (coordenadas + zoom)
+            std::string zoomLabel =
+                "X: " + std::to_string(centerX) +
+                " Y: " + std::to_string(centerY) +
+                " Zoom: " + std::to_string(previewZoom) + "X";
             drawText(renderer,
                      previewX + viewportW - static_cast<int>(zoomLabel.size()) * 7 * 1 - 2,
                      previewY - 8,
