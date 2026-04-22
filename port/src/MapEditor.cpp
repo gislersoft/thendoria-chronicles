@@ -629,6 +629,7 @@ int main(int argc, char **argv) {
 
     setWindowTitle(window, currentMapPath, camX, camY, dirty, copyMode);
 
+    bool mouseHeld = false;
     while (running) {
         int mouseX = 0;
         int mouseY = 0;
@@ -753,6 +754,7 @@ int main(int argc, char **argv) {
             }
 
             if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+                mouseHeld = true;
                 const int x = e.button.x;
                 const int y = e.button.y;
 
@@ -901,6 +903,35 @@ int main(int argc, char **argv) {
                     }
                     setWindowTitle(window, currentMapPath, camX, camY, dirty, copyMode);
                 }
+            }
+
+            // Soporte para click sostenido (drag/hold) en el grid
+            if ((e.type == SDL_MOUSEMOTION && (e.motion.state & SDL_BUTTON_LMASK)) ||
+                (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT)) {
+                // Usar la posición actual del mouse
+                int x = (e.type == SDL_MOUSEMOTION) ? e.motion.x : e.button.x;
+                int y = (e.type == SDL_MOUSEMOTION) ? e.motion.y : e.button.y;
+
+                // Solo pintar si el mouse está sobre el grid
+                if (x >= 0 && x < kMapViewW && y >= 0 && y < kMapViewH) {
+                    const int tx = camX + (x / kCellPx);
+                    const int ty = camY + (y / kCellPx);
+                    if (tx >= 0 && tx < kMapSize && ty >= 0 && ty < kMapSize) {
+                        if (!copyMode) {
+                            map.atMutable(tx, ty) = actual;
+                            dirty = true;
+                        } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+                            pegado = map.at(tx, ty);
+                            actual = pegado;
+                            copyMode = false;
+                        }
+                    }
+                    setWindowTitle(window, currentMapPath, camX, camY, dirty, copyMode);
+                }
+            }
+
+            if (e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT) {
+                mouseHeld = false;
             }
         }
 
