@@ -53,9 +53,9 @@ constexpr int kInfoRow1Y = kMapViewH + 8;               // 408
 constexpr int kInfoRow2Y = kInfoRow1Y + kInfoPanelH + 6; // 472
 constexpr int kInfoRow3Y = kInfoRow2Y + kInfoPanelH + 6; // 536
 constexpr int kHoverPanelX = kWindowW - kInfoPanelW - 2;
-constexpr int kHoverPanelY = kWindowH - kInfoPanelH - 2;
+constexpr int kHoverPanelY = kWindowH - kInfoPanelH - 6;
 
-const SDL_Color kColBg = {0, 0, 0, 255};
+const SDL_Color kColBg = {192, 192, 192, 255};
 const SDL_Color kColPanelFill = {35, 52, 79, 255};
 const SDL_Color kColPanelBorder = {255, 255, 255, 255};
 const SDL_Color kColButtonFill = {28, 46, 78, 255};
@@ -314,7 +314,7 @@ std::vector<Button> buildButtons() {
 
     int y = 10;
     const int h = 24;
-    const int w = 145;
+    const int w = 135;
     add(kPanelX, y, w, h, CMD_ACCION, "ACCION"); y += 28;
     add(kPanelX, y, w, h, CMD_ESTADO, "ESTADO"); y += 28;
     add(kPanelX, y, w, h, CMD_IMPORTANTE, "IMPORTANTE"); y += 28;
@@ -328,14 +328,14 @@ std::vector<Button> buildButtons() {
     add(kPanelX, 310, 90, 24, CMD_COPY_MODE, "COPIAR");
     add(kPanelX + 96, 310, 90, 24, CMD_FILL, "LLENAR");
     add(kPanelX + 192, 310, 90, 24, CMD_CLONE, "CLONAR");
+    add(kPanelX + 192, 370, 90, 24, CMD_EXIT, "SALIR");
 
     add(kPanelX, 340, 90, 24, CMD_USE_CLIPBOARD, "PEGAR");
     add(kPanelX + 96, 340, 90, 24, CMD_USE_MODIFIED, "MODIF");
+    add(kPanelX + 192, 340, 126, 24, CMD_SAVE_AS, "GUARD COMO");
 
-    add(kPanelX, 370, 90, 24, CMD_SAVE, "GUARDAR");
-    add(kPanelX + 96, 370, 90, 24, CMD_SAVE_AS, "GUARDAR COMO");
-    add(kPanelX + 192, 370, 90, 24, CMD_OPEN, "ABRIR");
-    add(kPanelX + 288, 370, 90, 24, CMD_EXIT, "SALIR");
+    add(kPanelX, 370, 90, 24, CMD_OPEN, "ABRIR");
+    add(kPanelX + 96, 370, 90, 24, CMD_SAVE, "GUARD");
     return out;
 }
 
@@ -348,7 +348,10 @@ void drawButton(SDL_Renderer *renderer, const Button &b, bool hovered, bool acti
     SDL_SetRenderDrawColor(renderer, border.r, border.g, border.b, border.a);
     SDL_RenderDrawRect(renderer, &b.rect);
 
-    drawText(renderer, b.rect.x + 6, b.rect.y + 6, b.label, kColText, 2);
+    // Solo dibujar texto si el label no está vacío
+    if (!b.label.empty()) {
+        drawText(renderer, b.rect.x + 6, b.rect.y + 6, b.label, kColText, 2);
+    }
 }
 
 void drawObjectPanel(SDL_Renderer *renderer, const char *title, const MapObject &o, int x, int y, SDL_Color titleColor,
@@ -1039,55 +1042,56 @@ int main(int argc, char **argv) {
                     continue;
                 }
                 SDL_Rect src{(it.frame % iconTilesPerRow) * kIconSize, (it.frame / iconTilesPerRow) * kIconSize, kIconSize, kIconSize};
-                SDL_Rect dst{btn->rect.x + btn->rect.w - kIconSize - 2, btn->rect.y + 2, kIconSize, kIconSize};
+                SDL_Rect dst{
+                    btn->rect.x + btn->rect.w - kIconSize - 2,
+                    btn->rect.y + (btn->rect.h - kIconSize) / 2,
+                    kIconSize,
+                    kIconSize
+                };
                 SDL_RenderCopy(renderer, iconTexture, &src, &dst);
             }
         }
 
-        // 5x5 neighborhood preview — only shown when mouse is over map (matches original TILCRE.CPP)
-        if (showNeighborhoodPreview &&
-            mouseX >= 0 && mouseX < kMapViewW &&
-            mouseY >= 0 && mouseY < kMapViewH) {
-
-            const int centerX = camX + (mouseX / kCellPx);
-            const int centerY = camY + (mouseY / kCellPx);
-
-            // Draw below the palette, same column
-            const int previewX = kPaletteX;
-            const int previewY = kPaletteY + kPaletteRowsVisible * kPaletteCell + 18;
-            const int pCell = 16; // match original 16px tile size
-            const int pN    = 5;  // 5x5 exactly as in original
-
-            SDL_Rect pBox{previewX - 2, previewY - 18, pCell * pN + 4, 14};
-            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-            SDL_RenderFillRect(renderer, &pBox);
-            drawText(renderer, previewX - 2, previewY - 16, "VISTA 5X5 [Z]", kColTitle, 1);
-
-            for (int py = 0; py < pN; ++py) {
-                for (int px = 0; px < pN; ++px) {
-                    const int mx = centerX + px - 2;
-                    const int my = centerY + py - 2;
-                    SDL_Rect dst{previewX + px * pCell, previewY + py * pCell, pCell, pCell};
-                    if (mx >= 0 && mx < kMapSize && my >= 0 && my < kMapSize) {
-                        const int tile1 = map.at(mx, my).tiles[0];
-                        if (tile1 > 0 && tile1 <= tileCount) {
-                            SDL_Rect src = tileSrcRect(tile1 - 1, tilesPerRow);
-                            SDL_RenderCopy(renderer, tileTexture, &src, &dst);
-                        } else {
-                            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-                            SDL_RenderFillRect(renderer, &dst);
-                        }
+        // 5x5 neighborhood preview — siempre visible y centrada respecto a la paleta
+        const int pCell = 16; // tamaño de celda
+        const int pCols = 15;  // columnas
+        const int pRows = 5;   // filas
+        // Centro de la paleta
+        const int paletteCenterX = kPaletteX + (kPaletteCols * kPaletteCell) / 2;
+        // Centrar la vista respecto a la paleta
+        const int previewX = paletteCenterX - (pCols * pCell) / 2;
+        const int previewY = kPaletteY + kPaletteRowsVisible * kPaletteCell + 18 - 30;
+        // Usar el tile bajo el mouse, o el centro de la vista si el mouse no está sobre el mapa
+        int centerX = camX + kViewTilesX / 2;
+        int centerY = camY + kViewTilesY / 2;
+        if (mouseX >= 0 && mouseX < kMapViewW && mouseY >= 0 && mouseY < kMapViewH) {
+            centerX = camX + (mouseX / kCellPx);
+            centerY = camY + (mouseY / kCellPx);
+        }
+        for (int py = 0; py < pRows; ++py) {
+            for (int px = 0; px < pCols; ++px) {
+                const int mx = centerX + px - pCols / 2;
+                const int my = centerY + py - pRows / 2;
+                SDL_Rect dst{previewX + px * pCell, previewY + py * pCell, pCell, pCell};
+                if (mx >= 0 && mx < kMapSize && my >= 0 && my < kMapSize) {
+                    const int tile1 = map.at(mx, my).tiles[0];
+                    if (tile1 > 0 && tile1 <= tileCount) {
+                        SDL_Rect src = tileSrcRect(tile1 - 1, tilesPerRow);
+                        SDL_RenderCopy(renderer, tileTexture, &src, &dst);
                     } else {
                         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
                         SDL_RenderFillRect(renderer, &dst);
                     }
+                } else {
+                    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+                    SDL_RenderFillRect(renderer, &dst);
                 }
             }
-            // Highlight center tile — matches original: h.box(start_x+32, 32, start_x+48, 48, 67)
-            SDL_Rect centerRect{previewX + 2 * pCell, previewY + 2 * pCell, pCell, pCell};
-            SDL_SetRenderDrawColor(renderer, 244, 148, 64, 255);
-            SDL_RenderDrawRect(renderer, &centerRect);
         }
+        // Highlight center tile
+        SDL_Rect centerRect{previewX + (pCols / 2) * pCell, previewY + (pRows / 2) * pCell, pCell, pCell};
+        SDL_SetRenderDrawColor(renderer, 244, 148, 64, 255);
+        SDL_RenderDrawRect(renderer, &centerRect);
 
         // Info panels
         // Info panels: 2×2 grid in bottom-left zone (below map view)
@@ -1105,9 +1109,7 @@ int main(int argc, char **argv) {
 
         // Palette — clamp visible rows to actual rows in the sheet
         const int paletteRowsDraw = std::min(kPaletteRowsVisible, tilesPerCol - paletteOffsetRow);
-        SDL_Rect palRect{kPaletteX - 2, kPaletteY - 2, kPaletteCols * kPaletteCell + 4, paletteRowsDraw * kPaletteCell + 4};
-        SDL_SetRenderDrawColor(renderer, kColPanelBorder.r, kColPanelBorder.g, kColPanelBorder.b, kColPanelBorder.a);
-        SDL_RenderDrawRect(renderer, &palRect);
+        // (Box de la paleta eliminado)
 
         for (int row = 0; row < paletteRowsDraw; ++row) {
             for (int col = 0; col < kPaletteCols; ++col) {
@@ -1132,16 +1134,16 @@ int main(int argc, char **argv) {
         }
 
         drawText(renderer, kPaletteX, kPaletteY - 16,
-                 (tilePickMode ? std::string("PICK TILE  R") : std::string("PALETA     R")) + std::to_string(paletteOffsetRow),
-                 kColTitle, 2);
+             (tilePickMode ? std::string("PICK TILE") : std::string("PALETA")),
+             tilePickMode ? kColTitle : SDL_Color{0, 0, 0, 255}, 2);
 
         // Tile slots previews (right panel, below action buttons)
         drawText(renderer, kPanelX, 398, tilePickMode
                  ? "TILES [PICK: " + std::to_string(tilePickTargetCount - tilePickIndex) + " LEFT]"
-                 : "TILES:", kColTitle, 2);
+                 : "TILES:", SDL_Color{0, 0, 0, 255}, 2);
         for (int i = 0; i < 3; ++i) {
             SDL_Rect slot{kPanelX + i * 38, 414, 34, 34};
-            SDL_SetRenderDrawColor(renderer, kColPanelBorder.r, kColPanelBorder.g, kColPanelBorder.b, kColPanelBorder.a);
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_RenderDrawRect(renderer, &slot);
 
             int t = modificado.tiles[i];
@@ -1150,7 +1152,7 @@ int main(int argc, char **argv) {
                 SDL_RenderCopy(renderer, tileTexture, &src, &slot);
             }
 
-            drawText(renderer, slot.x + 12, slot.y + 36, std::to_string(i + 1), kColText, 2);
+            drawText(renderer, slot.x + 12, slot.y + 36, std::to_string(i + 1), SDL_Color{0, 0, 0, 255}, 2);
         }
 
         // Input overlay (drawn last so it sits on top of everything)
