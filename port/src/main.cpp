@@ -583,11 +583,17 @@ int main(int argc, char **argv) {
 
 #if defined(THENDORIA_HAVE_SDL_MIXER)
     Mix_Music *exploreMusic = nullptr;
+    std::string currentMusicFileName;
+    const std::string mapBaseName = std::filesystem::path(mapPath).filename().string();
+    const char mapFirstChar = mapBaseName.empty() ? '\0' : static_cast<char>(std::toupper(static_cast<unsigned char>(mapBaseName[0])));
+    const std::string musicFileName = (mapFirstChar == 'C') ? "CastleKeyLoop.mp3"
+                                    : (mapFirstChar == 'D') ? "DungeonLoop.mp3"
+                                    : "exploreMusic.mp3";
     const std::string exploreMusicPath = firstExistingPath({
-        "sound/music/exploreMusic.mp3",
-        "port/sound/music/exploreMusic.mp3",
-        "../port/sound/music/exploreMusic.mp3",
-        "../sound/music/exploreMusic.mp3"
+        "sound/music/" + musicFileName,
+        "port/sound/music/" + musicFileName,
+        "../port/sound/music/" + musicFileName,
+        "../sound/music/" + musicFileName
     });
 
     if (!exploreMusicPath.empty()) {
@@ -608,10 +614,12 @@ int main(int argc, char **argv) {
                 std::cerr << "Mix_PlayMusic failed for gameplay music: " << Mix_GetError() << '\n';
                 Mix_FreeMusic(exploreMusic);
                 exploreMusic = nullptr;
+            } else {
+                currentMusicFileName = musicFileName;
             }
         }
     } else {
-        std::cerr << "Could not find gameplay music: exploreMusic.mp3" << '\n';
+        std::cerr << "Could not find gameplay music: " << musicFileName << '\n';
     }
 #endif
 
@@ -741,6 +749,38 @@ int main(int argc, char **argv) {
                 dialogo = false;
                 dialogLines.clear();
                 std::cout << "Loaded map: " << pendingMapPath << " (target=" << pendingMapName << ")" << '\n';
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+                {
+                    const std::string newBaseName = std::filesystem::path(pendingMapPath).filename().string();
+                    const char newFirstChar = newBaseName.empty() ? '\0' : static_cast<char>(std::toupper(static_cast<unsigned char>(newBaseName[0])));
+                    const std::string newMusicFileName = (newFirstChar == 'C') ? "CastleKeyLoop.mp3"
+                                                       : (newFirstChar == 'D') ? "DungeonLoop.mp3"
+                                                       : "exploreMusic.mp3";
+                    const std::string newMusicPath = firstExistingPath({
+                        "sound/music/" + newMusicFileName,
+                        "port/sound/music/" + newMusicFileName,
+                        "../port/sound/music/" + newMusicFileName,
+                        "../sound/music/" + newMusicFileName
+                    });
+                    if (!newMusicPath.empty() && newMusicFileName != currentMusicFileName) {
+                        Mix_HaltMusic();
+                        if (exploreMusic) {
+                            Mix_FreeMusic(exploreMusic);
+                            exploreMusic = nullptr;
+                        }
+                        exploreMusic = Mix_LoadMUS(newMusicPath.c_str());
+                        if (!exploreMusic) {
+                            std::cerr << "Mix_LoadMUS failed for " << newMusicPath << ": " << Mix_GetError() << '\n';
+                        } else if (Mix_PlayMusic(exploreMusic, -1) != 0) {
+                            std::cerr << "Mix_PlayMusic failed for " << newMusicPath << ": " << Mix_GetError() << '\n';
+                            Mix_FreeMusic(exploreMusic);
+                            exploreMusic = nullptr;
+                        } else {
+                            currentMusicFileName = newMusicFileName;
+                        }
+                    }
+                }
+#endif
             } else {
                 std::cout << "Failed to load map file: " << pendingMapPath << " (target=" << pendingMapName << ")" << '\n';
             }
