@@ -588,7 +588,7 @@ int main(int argc, char **argv) {
     };
 
     // Play intro sequence
-    IntroScreen intro;
+    IntroScreen intro(launchOptions.filterGameboy);
     if (!launchOptions.hasMap) {
         intro.playFullIntro(graph, font, renderer, appLaunchTicks);
     } else {
@@ -615,8 +615,13 @@ int main(int argc, char **argv) {
         std::uint16_t format = 0;
         int channels = 0;
         if (Mix_QuerySpec(&freq, &format, &channels) == 0) {
-            if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024) != 0) {
+            const int    audioFreq     = launchOptions.filterGameboy ? 32768 : 44100;
+            const Uint16 audioFormat   = launchOptions.filterGameboy ? AUDIO_U8 : MIX_DEFAULT_FORMAT;
+            const int    audioChannels = launchOptions.filterGameboy ? 1 : 2;
+            if (Mix_OpenAudio(audioFreq, audioFormat, audioChannels, 1024) != 0) {
                 std::cerr << "Mix_OpenAudio failed for gameplay music: " << Mix_GetError() << '\n';
+            } else if (launchOptions.filterGameboy) {
+                IntroScreen::setupGameboyPostMix();
             }
         }
 

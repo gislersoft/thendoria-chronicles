@@ -10,8 +10,12 @@
 
 class IntroScreen {
 public:
-    IntroScreen();
+    explicit IntroScreen(bool monoAudio = false);
     ~IntroScreen();
+
+    // Registers the Game Boy speaker low-pass filter via Mix_SetPostMix.
+    // Call once after Mix_OpenAudio when gameboy audio mode is active.
+    static void setupGameboyPostMix();
 
     // Main intro sequence
     void playFullIntro(GraphCompat &graph, FontCompat &font, SDL_Renderer *renderer, std::uint32_t appLaunchTicks);
@@ -43,6 +47,7 @@ private:
 
     // Intro song state
     bool introMusicPlaying_ = false;
+    bool monoAudio_ = false;
     std::uint32_t appLaunchTicks_ = 0;
 #if defined(THENDORIA_HAVE_SDL_MIXER)
     bool mixerReady_ = false;

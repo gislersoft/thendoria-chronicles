@@ -49,7 +49,32 @@ std::uint32_t alphaBlendOver(std::uint32_t dst, std::uint32_t src) {
 
 } // namespace
 
-IntroScreen::IntroScreen() {}
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+// Game Boy DMG speaker low-pass filter (~8kHz cutoff, one-pole IIR).
+// alpha = 1 - exp(-2*pi*8000/32768) ≈ 0.784
+// Applied via Mix_SetPostMix when gameboy audio mode is active.
+static float s_gbLpfState = 0.0f;
+
+static void gbPostMixCB(void* /*udata*/, Uint8* stream, int len) {
+    static constexpr float kAlpha    = 0.784f;
+    static constexpr float kOneAlpha = 1.0f - kAlpha;
+    for (int i = 0; i < len; ++i) {
+        float s = static_cast<float>(stream[i]) - 128.0f;  // U8 center at 128
+        s_gbLpfState = kAlpha * s + kOneAlpha * s_gbLpfState;
+        const int out = static_cast<int>(s_gbLpfState + 128.5f);
+        stream[i] = static_cast<Uint8>(out < 0 ? 0 : (out > 255 ? 255 : out));
+    }
+}
+#endif
+
+void IntroScreen::setupGameboyPostMix() {
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+    s_gbLpfState = 0.0f;
+    Mix_SetPostMix(gbPostMixCB, nullptr);
+#endif
+}
+
+IntroScreen::IntroScreen(bool monoAudio) : monoAudio_(monoAudio) {}
 
 IntroScreen::~IntroScreen() {
     stopIntroMusic();
@@ -234,11 +259,17 @@ bool IntroScreen::startIntroMusic(const std::string &path) {
     }
 
     if (!mixerReady_) {
-        if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024) != 0) {
+        const int   audioFreq     = monoAudio_ ? 32768 : 44100;
+        const Uint16 audioFormat  = monoAudio_ ? AUDIO_U8 : MIX_DEFAULT_FORMAT;
+        const int   audioChannels = monoAudio_ ? 1 : 2;
+        if (Mix_OpenAudio(audioFreq, audioFormat, audioChannels, 1024) != 0) {
             std::cerr << "Mix_OpenAudio failed: " << Mix_GetError() << '\n';
             return false;
         }
         mixerReady_ = true;
+        if (monoAudio_) {
+            setupGameboyPostMix();
+        }
     }
 
     introMusic_ = Mix_LoadMUS(resolvedPath.c_str());
