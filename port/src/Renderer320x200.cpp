@@ -1,6 +1,7 @@
 #include "Renderer320x200.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -32,28 +33,70 @@ std::uint32_t blendArgb(std::uint32_t dst, std::uint32_t src) {
 
 } // namespace
 
-Renderer320x200::Renderer320x200(SDL_Renderer *renderer)
-    : renderer_(renderer), texture_(nullptr) {
-    texture_ = SDL_CreateTexture(
-        renderer_,
-        SDL_PIXELFORMAT_ARGB8888,
-        SDL_TEXTUREACCESS_STREAMING,
-        kWidth,
-        kHeight
-    );
+// Map an ARGB color to a Game Boy green shade.
+// Ramp: #0F380F (authentic DMG darkest) -> #9BBC0F (full bright).
+// Grid is #306230 (neutral mid) — dark pixels contrast below, bright above.
+// Smoothstep S-curve: deep shadows stay dark, mid-tones are well separated.
+static std::uint32_t toGBGreen(std::uint32_t argb) {
+    const std::uint32_t r = (argb >> 16) & 0xFFu;
+    const std::uint32_t g = (argb >>  8) & 0xFFu;
+    const std::uint32_t b =  argb        & 0xFFu;
+    // BT.601 perceived luminance, 0-255.
+    const std::uint32_t L = (77u * r + 150u * g + 29u * b) >> 8;
+    // Smoothstep S-curve: t = 3x^2 - 2x^3
+    const float x = L / 255.0f;
+    const float t = x * x * (3.0f - 2.0f * x);
+    const std::uint32_t ti = static_cast<std::uint32_t>(t * 255.0f + 0.5f);
+    // Interpolate from #0F380F to #9BBC0F.
+    const std::uint32_t gr = 0x0Fu + ((0x9Bu - 0x0Fu) * ti) / 255u;
+    const std::uint32_t gg = 0x38u + ((0xBCu - 0x38u) * ti) / 255u;
+    const std::uint32_t gb = 0x0Fu;
+    return 0xFF000000u | (gr << 16) | (gg << 8) | gb;
+}
 
-    if (!texture_) {
-        std::cerr << "SDL_CreateTexture failed: " << SDL_GetError() << '\n';
+Renderer320x200::Renderer320x200(SDL_Renderer *renderer, bool gameboyFilter)
+    : renderer_(renderer), gridTexture_(nullptr), plainTexture_(nullptr),
+      rgbaGrid_(kScaledPixels, 0u),
+      gameboyFilter_(gameboyFilter) {
+    if (gameboyFilter_) {
+        // Full scaled texture for LCD grid effect.
+        gridTexture_ = SDL_CreateTexture(
+            renderer_,
+            SDL_PIXELFORMAT_ARGB8888,
+            SDL_TEXTUREACCESS_STREAMING,
+            kScaledWidth,
+            kScaledHeight
+        );
+        if (!gridTexture_) {
+            std::cerr << "SDL_CreateTexture (grid) failed: " << SDL_GetError() << '\n';
+        }
+        SDL_SetTextureScaleMode(gridTexture_, SDL_ScaleModeNearest);
+    } else {
+        // Plain 320×200 texture; SDL logical size handles the upscale.
+        plainTexture_ = SDL_CreateTexture(
+            renderer_,
+            SDL_PIXELFORMAT_ARGB8888,
+            SDL_TEXTUREACCESS_STREAMING,
+            kWidth,
+            kHeight
+        );
+        if (!plainTexture_) {
+            std::cerr << "SDL_CreateTexture (plain) failed: " << SDL_GetError() << '\n';
+        }
+        SDL_RenderSetLogicalSize(renderer_, kWidth, kHeight);
     }
 
-    SDL_RenderSetLogicalSize(renderer_, kWidth, kHeight);
     initDefaultPalette();
 }
 
 Renderer320x200::~Renderer320x200() {
-    if (texture_) {
-        SDL_DestroyTexture(texture_);
-        texture_ = nullptr;
+    if (gridTexture_) {
+        SDL_DestroyTexture(gridTexture_);
+        gridTexture_ = nullptr;
+    }
+    if (plainTexture_) {
+        SDL_DestroyTexture(plainTexture_);
+        plainTexture_ = nullptr;
     }
 }
 
@@ -262,10 +305,11 @@ void Renderer320x200::present(const unsigned char *px) {
 }
 
 void Renderer320x200::present(const unsigned char *px, const unsigned char *top) {
-    if (!texture_ || !px) {
+    if (!px) {
         return;
     }
 
+    // Step 1: Composite palette + overlay + top layer into rgbaScratch_ (320×200).
     for (int i = 0; i < kPixels; ++i) {
         rgbaScratch_[i] = palette_[px[i]];
         if ((overlay_[i] >> 24) != 0) {
@@ -274,11 +318,39 @@ void Renderer320x200::present(const unsigned char *px, const unsigned char *top)
         if (top && top[i] != 0) {
             rgbaScratch_[i] = palette_[top[i]];
         }
+        if (gameboyFilter_) {
+            rgbaScratch_[i] = toGBGreen(rgbaScratch_[i]);
+        }
     }
 
-    SDL_UpdateTexture(texture_, nullptr, rgbaScratch_.data(), kWidth * static_cast<int>(sizeof(std::uint32_t)));
-    SDL_RenderClear(renderer_);
-    SDL_RenderCopy(renderer_, texture_, nullptr, nullptr);
+    if (gameboyFilter_) {
+        // Step 2: Upscale into rgbaGrid_ (960×600) with LCD grid border.
+        for (int gy = 0; gy < kHeight; ++gy) {
+            for (int gx = 0; gx < kWidth; ++gx) {
+                const std::uint32_t boosted = rgbaScratch_[gx + gy * kWidth];
+                const int baseX = gx * kScale;
+                const int baseY = gy * kScale;
+                for (int sy = 0; sy < kScale; ++sy) {
+                    const bool yGrid = (sy == kScale - 1);
+                    const int rowOff = (baseY + sy) * kScaledWidth;
+                    for (int sx = 0; sx < kScale; ++sx) {
+                        const bool isGrid = yGrid || (sx == kScale - 1);
+                        rgbaGrid_[baseX + sx + rowOff] = isGrid ? kGridColor : boosted;
+                    }
+                }
+            }
+        }
+        SDL_UpdateTexture(gridTexture_, nullptr, rgbaGrid_.data(), kScaledWidth * static_cast<int>(sizeof(std::uint32_t)));
+        SDL_RenderClear(renderer_);
+        SDL_Rect dst{0, 0, kScaledWidth, kScaledHeight};
+        SDL_RenderCopy(renderer_, gridTexture_, nullptr, &dst);
+    } else {
+        // Plain path: upload 320×200 directly, logical size handles upscale.
+        SDL_UpdateTexture(plainTexture_, nullptr, rgbaScratch_.data(), kWidth * static_cast<int>(sizeof(std::uint32_t)));
+        SDL_RenderClear(renderer_);
+        SDL_RenderCopy(renderer_, plainTexture_, nullptr, nullptr);
+    }
+
     SDL_RenderPresent(renderer_);
 }
 

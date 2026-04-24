@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstdint>
+#include <vector>
 
 class Renderer320x200 {
 public:
@@ -11,7 +12,27 @@ public:
     static constexpr int kHeight = 200;
     static constexpr int kPixels = kWidth * kHeight;
 
-    explicit Renderer320x200(SDL_Renderer *renderer);
+    // LCD grid effect: each game pixel is rendered as kScale×kScale screen pixels,
+    // with a 1-pixel black border on the right and bottom edge of every block.
+    static constexpr int kScale       = 3;
+    static constexpr int kScaledWidth  = kWidth  * kScale;
+    static constexpr int kScaledHeight = kHeight * kScale;
+    static constexpr int kScaledPixels = kScaledWidth * kScaledHeight;
+    static constexpr std::uint32_t kGridColor = 0xFF306230u;  // DMG shade 2 — neutral mid-tone grid
+
+    // Brightness boost applied to lit pixels to compensate for the dark grid lines
+    // consuming ~55% of screen area. Expressed as num/den fraction, clamped to 255.
+    // 3/2 = 1.5× — raise or lower kBrightNum to taste.
+    static constexpr std::uint32_t kBrightNum = 6u;
+    static constexpr std::uint32_t kBrightDen = 5u;
+
+    // Scanline effect: the second visible screen row inside each pixel block (sy==1)
+    // is dimmed by this fraction to simulate the dark gap between CRT phosphor lines.
+    // 1/2 = 50% brightness on the scanline row.
+    static constexpr std::uint32_t kScanlineNum = 1u;
+    static constexpr std::uint32_t kScanlineDen = 2u;
+
+    explicit Renderer320x200(SDL_Renderer *renderer, bool gameboyFilter = false);
     ~Renderer320x200();
 
     unsigned char *vga();
@@ -40,15 +61,19 @@ public:
 
 private:
     SDL_Renderer *renderer_;
-    SDL_Texture *texture_;
+    SDL_Texture *gridTexture_;   // kScaledWidth × kScaledHeight — used with gameboyFilter_
+    SDL_Texture *plainTexture_;  // kWidth × kHeight — used without gameboyFilter_
 
     std::array<unsigned char, kPixels> vga_{};
     std::array<unsigned char, kPixels> pv1_{};
     std::array<unsigned char, kPixels> pv2_{};
 
-    std::array<std::uint32_t, kPixels> rgbaScratch_{};
-    std::array<std::uint32_t, kPixels> overlay_{};
-    std::array<std::uint32_t, 256> palette_{};
+    std::array<std::uint32_t, kPixels>  rgbaScratch_{};
+    std::vector<std::uint32_t>             rgbaGrid_;   // kScaledPixels — heap allocated
+    std::array<std::uint32_t, kPixels>  overlay_{};
+    std::array<std::uint32_t, 256>           palette_{};
+
+    bool gameboyFilter_ = false;  // enables LCD grid + Game Boy green colour mapping
 
     void initDefaultPalette();
 };

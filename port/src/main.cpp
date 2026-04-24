@@ -190,6 +190,7 @@ struct LaunchOptions {
     bool hasMap = false;
     bool hasX = false;
     bool hasY = false;
+    bool filterGameboy = false;
     std::string mapName;
     int startX = 0;
     int startY = 0;
@@ -271,6 +272,10 @@ LaunchOptions parseLaunchOptions(int argc, char **argv) {
                 options.hasY = true;
                 options.startY = parsed;
             }
+        } else if (key == "filter") {
+            if (toLower(value) == "gameboy") {
+                options.filterGameboy = true;
+            }
         }
     }
 
@@ -318,6 +323,12 @@ std::filesystem::path findProjectRoot(const std::vector<std::filesystem::path> &
 int main(int argc, char **argv) {
     const LaunchOptions launchOptions = parseLaunchOptions(argc, argv);
 
+    // Tell Windows this process is per-monitor DPI aware BEFORE SDL_Init.
+    // Without this, Windows scales the window up using bilinear filtering,
+    // blurring every pixel. With it, SDL receives true physical pixel dimensions.
+    SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");
+    SDL_SetHint(SDL_HINT_WINDOWS_DPI_SCALING, "0");
+
     const std::uint32_t appLaunchTicks = SDL_GetTicks();
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0) {
@@ -348,7 +359,7 @@ int main(int argc, char **argv) {
         SDL_WINDOWPOS_CENTERED,
         960,
         600,
-        SDL_WINDOW_SHOWN
+        SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI
     );
 
     if (!window) {
@@ -356,6 +367,9 @@ int main(int argc, char **argv) {
         SDL_Quit();
         return 1;
     }
+
+    // Nearest-neighbour scaling globally — prevents SDL blurring pixels during RenderCopy.
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
 
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!renderer) {
@@ -374,7 +388,7 @@ int main(int argc, char **argv) {
     std::cout << " - DIALOGS/lin02:   " << (hasDialogAsset ? "OK" : "MISSING") << '\n';
     std::cout << " - IMG/intro.pcx:   " << (hasImgAsset ? "OK" : "MISSING") << '\n';
 
-    GraphCompat graph(0, renderer);
+    GraphCompat graph(0, renderer, launchOptions.filterGameboy);
     if (graph.status() == 0) {
         std::cerr << "GraphCompat initialization failed" << '\n';
         SDL_DestroyRenderer(renderer);

@@ -14,7 +14,7 @@ public:
     unsigned char *pvm;
     unsigned char *pvf;
 
-    GraphCompat(int useMaskBuffers, SDL_Renderer *renderer);
+    GraphCompat(int useMaskBuffers, SDL_Renderer *renderer, bool gameboyFilter = false);
 
     int status() const;
     void modo_video(int modo);
