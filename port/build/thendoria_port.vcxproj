@@ -434,6 +434,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="C:\TURBOC3\SRC\port\src\MapData.cpp" />
     <ClCompile Include="C:\TURBOC3\SRC\port\src\TileSetCompat.cpp" />
     <ClCompile Include="C:\TURBOC3\SRC\port\src\IntroScreen.cpp" />
+    <ClCompile Include="C:\TURBOC3\SRC\port\src\BattleMode.cpp" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

@@ -9,6 +9,7 @@
 #include "SpriteCompat.h"
 #include "TileSetCompat.h"
 #include "IntroScreen.h"
+#include "BattleMode.h"
 
 #include <algorithm>
 #include <cctype>
@@ -841,6 +842,12 @@ int main(int argc, char **argv) {
     }
 #endif
 
+    // Battle mode — loaded once, activated with 'B', exited with 'E'
+    BattleMode battle;
+    battle.load();
+    bool battleMode = false;
+    bool prevB = false;
+
     bool running = true;
     while (running) {
         const std::uint64_t frameStartMs = SDL_GetTicks64();
@@ -858,6 +865,14 @@ int main(int argc, char **argv) {
         const std::uint8_t *keys = SDL_GetKeyboardState(nullptr);
         const bool pressedSpace = keys[SDL_SCANCODE_SPACE] != 0;
         const bool pressedEnter = keys[SDL_SCANCODE_RETURN] != 0;
+
+        // 'B' enters battle mode from gameplay
+        const bool pressedB = keys[SDL_SCANCODE_B] != 0;
+        if (pressedB && !prevB && !battleMode && !dialogo && !scroll) {
+            battle.reset();
+            battleMode = true;
+        }
+        prevB = pressedB;
         const bool justPressedSpace = pressedSpace && !prevSpace;
         const bool justPressedEnter = pressedEnter && !prevEnter;
         prevSpace = pressedSpace;
@@ -1090,6 +1105,25 @@ int main(int argc, char **argv) {
             pendingMapPath.clear();
             pendingMapName.clear();
         }
+
+        // ---- Battle mode: full-screen turn-based combat ----
+        if (battleMode) {
+            graph.clearOverlay();
+            battle.update(keys, static_cast<std::uint32_t>(SDL_GetTicks()));
+            battle.draw(graph, font, static_cast<std::uint32_t>(SDL_GetTicks()));
+            if (battle.wantsExit()) {
+                battleMode = false;
+            }
+            graph.wait_retrace();
+            graph.volcar(graph.vga, graph.pv1);
+            graph.presentLayers(graph.vga, graph.pv2);
+            const std::uint64_t bElapsed = SDL_GetTicks64() - frameStartMs;
+            if (bElapsed < targetFrameMs) {
+                SDL_Delay(static_cast<std::uint32_t>(targetFrameMs - bElapsed));
+            }
+            continue;
+        }
+        // ---- End battle mode ----
 
         graph.clearOverlay();
         graph.clr(graph.pv1, 0);

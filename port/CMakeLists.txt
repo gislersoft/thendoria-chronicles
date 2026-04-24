@@ -18,6 +18,7 @@ add_executable(thendoria_port
     src/MapData.cpp
     src/TileSetCompat.cpp
     src/IntroScreen.cpp
+    src/BattleMode.cpp
 )
 
 add_executable(thendoria_map_editor
