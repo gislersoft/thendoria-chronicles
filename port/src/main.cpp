@@ -18,6 +18,7 @@
 #include <initializer_list>
 #include <iostream>
 #include <map>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -318,6 +319,200 @@ std::filesystem::path findProjectRoot(const std::vector<std::filesystem::path> &
     return std::filesystem::path();
 }
 
+// ---------------------------------------------------------------------------
+// NPC system
+// ---------------------------------------------------------------------------
+
+struct NpcInstance {
+    SpriteCompat sprite;
+    int frameFirst = 0;
+    int frameLast  = 0;
+    int mapX = 0;
+    int mapY = 0;
+    int refX = 0;
+    int refY = 0;
+    int scrollOffX = 0;
+    int scrollOffY = 0;
+    int facing = 2;       // 0=N 1=E 2=S 3=W  (matches DIR_* values)
+    bool scrolling = false;
+    std::vector<std::string> dialogFiles;  // resolved paths
+    int dialogIndex = 0;
+    int moveTimer = 0;
+    bool talking = false;
+};
+
+std::string resolveNpcDialogPath(const std::string &baseName) {
+    std::string name = baseName;
+    name.erase(std::remove_if(name.begin(), name.end(), [](unsigned char c) {
+        return std::isspace(c) != 0;
+    }), name.end());
+    if (name.empty() || name == "NULL" || name == "null") {
+        return std::string();
+    }
+    auto stripExt = [](const std::string &s) {
+        if (s.size() >= 4) {
+            const std::string ext = s.substr(s.size() - 4);
+            if (ext == ".TXT" || ext == ".txt") {
+                return s.substr(0, s.size() - 4);
+            }
+        }
+        return s;
+    };
+    const std::string nameNoExt = stripExt(name);
+    return firstExistingPath({
+        "DIALOGS/NPC/" + nameNoExt + ".TXT",
+        "DIALOGS/NPC/" + nameNoExt + ".txt",
+        "DIALOGS/"     + nameNoExt + ".TXT",
+        "DIALOGS/"     + nameNoExt + ".txt",
+        "../DIALOGS/NPC/" + nameNoExt + ".TXT",
+        "../DIALOGS/NPC/" + nameNoExt + ".txt",
+        "../DIALOGS/"     + nameNoExt + ".TXT",
+        "../DIALOGS/"     + nameNoExt + ".txt"
+    });
+}
+
+std::string resolveNpcSheetPath(const std::string &sheetName) {
+    std::string name = sheetName;
+    name.erase(std::remove_if(name.begin(), name.end(), [](unsigned char c) {
+        return std::isspace(c) != 0;
+    }), name.end());
+    if (name.empty()) {
+        return std::string();
+    }
+    // Strip any existing extension and look for the PNG
+    auto stripExt = [](const std::string &s) {
+        for (const char *ext : {".png", ".PNG", ".pcx", ".PCX"}) {
+            const std::string e = ext;
+            if (s.size() > e.size() && s.substr(s.size() - e.size()) == e) {
+                return s.substr(0, s.size() - e.size());
+            }
+        }
+        return s;
+    };
+    const std::string nameNoExt = stripExt(name);
+    return firstExistingPath({
+        "port/assets_png/IMG/" + nameNoExt + ".png",
+        "assets_png/IMG/"      + nameNoExt + ".png",
+        "../assets_png/IMG/"   + nameNoExt + ".png",
+        "../port/assets_png/IMG/" + nameNoExt + ".png"
+    });
+}
+
+std::vector<NpcInstance> loadNpcsForMap(const std::string &mapPath, std::mt19937 &rng) {
+    std::vector<NpcInstance> result;
+
+    std::string stem = std::filesystem::path(mapPath).stem().string();
+    std::string upperStem = stem;
+    std::transform(upperStem.begin(), upperStem.end(), upperStem.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+
+    const std::string npcFilePath = firstExistingPath({
+        "MAPS/NPC/" + upperStem + ".TXT",
+        "MAPS/NPC/" + stem      + ".TXT",
+        "MAPS/NPC/" + upperStem + ".txt",
+        "MAPS/NPC/" + stem      + ".txt",
+        "../MAPS/NPC/" + upperStem + ".TXT",
+        "../MAPS/NPC/" + stem      + ".TXT",
+        "../MAPS/NPC/" + upperStem + ".txt",
+        "../MAPS/NPC/" + stem      + ".txt"
+    });
+
+    if (npcFilePath.empty()) {
+        return result;
+    }
+
+    std::vector<std::string> lines;
+    if (!loadTextLines(npcFilePath, lines) || lines.size() < 2) {
+        return result;
+    }
+
+    auto splitComma = [](const std::string &s, std::vector<std::string> &out) {
+        out.clear();
+        std::size_t start = 0;
+        while (true) {
+            const std::size_t pos = s.find(',', start);
+            if (pos == std::string::npos) {
+                out.push_back(s.substr(start));
+                break;
+            }
+            out.push_back(s.substr(start, pos - start));
+            start = pos + 1;
+        }
+    };
+
+    auto trim = [](std::string s) {
+        while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) s.erase(s.begin());
+        while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back())))  s.pop_back();
+        return s;
+    };
+
+    // Line 1: spriteSheet,firstFrame,lastFrame
+    std::vector<std::string> parts1;
+    splitComma(lines[0], parts1);
+    if (parts1.size() < 3) {
+        return result;
+    }
+    const std::string sheetName = trim(parts1[0]);
+    int frameFirst = 0, frameLast = 0;
+    if (!parseInt(trim(parts1[1]), frameFirst) || !parseInt(trim(parts1[2]), frameLast)) {
+        return result;
+    }
+    if (frameFirst < 0 || frameLast < frameFirst) {
+        return result;
+    }
+
+    // Line 2: x,y  (0-indexed tile position)
+    std::vector<std::string> parts2;
+    splitComma(lines[1], parts2);
+    if (parts2.size() < 2) {
+        return result;
+    }
+    int spawnX = 0, spawnY = 0;
+    if (!parseInt(trim(parts2[0]), spawnX) || !parseInt(trim(parts2[1]), spawnY)) {
+        return result;
+    }
+    spawnX = std::clamp(spawnX, 0, MapData::kSize - 1);
+    spawnY = std::clamp(spawnY, 0, MapData::kSize - 1);
+
+    // Lines 3+: dialog file names
+    std::vector<std::string> dialogFiles;
+    for (std::size_t i = 2; i < lines.size(); ++i) {
+        const std::string dlg = trim(lines[i]);
+        if (!dlg.empty()) {
+            const std::string path = resolveNpcDialogPath(dlg);
+            if (!path.empty()) {
+                dialogFiles.push_back(path);
+            }
+        }
+    }
+
+    NpcInstance npc;
+    npc.frameFirst = frameFirst;
+    npc.frameLast  = frameLast;
+    npc.mapX = spawnX;
+    npc.mapY = spawnY;
+    npc.refX = spawnX;
+    npc.refY = spawnY;
+    npc.dialogFiles = std::move(dialogFiles);
+    npc.moveTimer = 5 + static_cast<int>(rng() % 10);
+
+    npc.sprite.crear(frameLast + 1, 16, 0.12f);
+    if (npc.sprite.status() != 0) {
+        const std::string sheetPath = resolveNpcSheetPath(sheetName);
+        if (!sheetPath.empty()) {
+            if (npc.sprite.cargarSpritePNG(sheetPath) == 1) {
+                std::cout << "Loaded NPC sprite: " << sheetPath
+                          << " (frames " << frameFirst << "-" << frameLast << ")\n";
+            }
+        }
+    }
+
+    std::cout << "NPC loaded from " << npcFilePath
+              << " at tile (" << spawnX << "," << spawnY << ")\n";
+    result.push_back(std::move(npc));
+    return result;
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
@@ -460,6 +655,9 @@ int main(int argc, char **argv) {
         }
     }
 
+    std::vector<NpcInstance> npcs;
+    std::mt19937 npcRng(static_cast<unsigned>(SDL_GetTicks()));
+
     MapData world;
     std::string mapPath;
     if (launchOptions.hasMap) {
@@ -481,6 +679,7 @@ int main(int argc, char **argv) {
         mapLoaded = world.loadFromFile(mapPath);
         if (mapLoaded) {
             std::cout << "Loaded map: " << mapPath << '\n';
+            npcs = loadNpcsForMap(mapPath, npcRng);
         }
     }
 
@@ -693,11 +892,57 @@ int main(int argc, char **argv) {
             }
         }
 
+        // NPC random movement (runs on quanto ticks)
+        if (quanto && mapLoaded) {
+            for (auto &npc : npcs) {
+                if (!npc.scrolling && !npc.talking) {
+                    npc.moveTimer--;
+                    if (npc.moveTimer <= 0) {
+                        npc.moveTimer = 5 + static_cast<int>(npcRng() % 10);
+                        const int dir = static_cast<int>(npcRng() % 4);
+                        int nx = npc.mapX;
+                        int ny = npc.mapY;
+                        switch (dir) {
+                            case 0: ny--; break;  // NORTE
+                            case 1: nx++; break;  // ESTE
+                            case 2: ny++; break;  // SUR
+                            case 3: nx--; break;  // OESTE
+                        }
+                        bool blocked = (nx < 0 || nx >= MapData::kSize ||
+                                        ny < 0 || ny >= MapData::kSize);
+                        if (!blocked) {
+                            blocked = (world.at(nx, ny).solido != 0);
+                        }
+                        if (!blocked && nx == xpos_actual && ny == ypos_actual) {
+                            blocked = true;
+                        }
+                        for (const auto &other : npcs) {
+                            if (&other != &npc && other.mapX == nx && other.mapY == ny) {
+                                blocked = true;
+                                break;
+                            }
+                        }
+                        if (!blocked) {
+                            npc.facing = dir;
+                            npc.refX = npc.mapX;
+                            npc.refY = npc.mapY;
+                            npc.mapX = nx;
+                            npc.mapY = ny;
+                            npc.scrollOffX = 0;
+                            npc.scrollOffY = 0;
+                            npc.scrolling = true;
+                        }
+                    }
+                }
+            }
+        }
+
         if (dialogo) {
             if (justPressedEnter) {
                 dialogPage0 += 5;
                 if (dialogPage0 > dialogEnd0) {
                     dialogo = false;
+                    for (auto &npc : npcs) { npc.talking = false; }
                 }
             }
         }
@@ -723,7 +968,11 @@ int main(int argc, char **argv) {
             if (tx != xpos_actual || ty != ypos_actual) {
                 if (tx >= 0 && tx < MapData::kSize && ty >= 0 && ty < MapData::kSize) {
                     const MapObject &target = world.at(tx, ty);
-                    if (target.solido == 0) {
+                    bool npcAt = false;
+                    for (const auto &npc : npcs) {
+                        if (npc.mapX == tx && npc.mapY == ty) { npcAt = true; break; }
+                    }
+                    if (target.solido == 0 && !npcAt) {
                         xpos_actual = tx;
                         ypos_actual = ty;
                         scroll = true;
@@ -752,7 +1001,41 @@ int main(int argc, char **argv) {
             }
 
             if (tx >= 0 && tx < MapData::kSize && ty >= 0 && ty < MapData::kSize) {
-                triggerTileAction(tx, ty, true);
+                bool npcInteracted = false;
+                for (auto &npc : npcs) {
+                    if (npc.mapX == tx && npc.mapY == ty && !npc.dialogFiles.empty()) {
+                        // Face toward the hero
+                        const int dx = xpos_actual - npc.mapX;
+                        const int dy = ypos_actual - npc.mapY;
+                        if (std::abs(dx) >= std::abs(dy)) {
+                            npc.facing = (dx > 0) ? 1 : 3; // ESTE / OESTE
+                        } else {
+                            npc.facing = (dy > 0) ? 2 : 0; // SUR / NORTE
+                        }
+                        npc.talking = true;
+                        const std::string &dlgPath =
+                            npc.dialogFiles[static_cast<std::size_t>(npc.dialogIndex)];
+                        if (loadTextLines(dlgPath, dialogLines)) {
+                            while (!dialogLines.empty() && dialogLines.back().empty()) {
+                                dialogLines.pop_back();
+                            }
+                            if (!dialogLines.empty()) {
+                            dialogStart0 = 0;
+                            dialogEnd0   = static_cast<int>(dialogLines.size()) - 1;
+                            dialogPage0  = 0;
+                            dialogo = true;
+                            }
+                            npc.dialogIndex =
+                                (npc.dialogIndex + 1) %
+                                static_cast<int>(npc.dialogFiles.size());
+                        }
+                        npcInteracted = true;
+                        break;
+                    }
+                }
+                if (!npcInteracted) {
+                    triggerTileAction(tx, ty, true);
+                }
             }
         }
 
@@ -767,6 +1050,7 @@ int main(int argc, char **argv) {
                 scroll = false;
                 dialogo = false;
                 dialogLines.clear();
+                npcs = loadNpcsForMap(pendingMapPath, npcRng);
                 std::cout << "Loaded map: " << pendingMapPath << " (target=" << pendingMapName << ")" << '\n';
 #if defined(THENDORIA_HAVE_SDL_MIXER)
                 {
@@ -812,31 +1096,7 @@ int main(int argc, char **argv) {
         graph.clr(graph.pv2, 0);
 
         if (tilesLoaded && mapLoaded) {
-            for (int j = -1; j < 14; ++j) {
-                for (int i = -1; i < 21; ++i) {
-                    const int wx = xpos_ref - 10 + i;
-                    const int wy = ypos_ref - 6 + j;
-                    const int sx = (i << 4) + xpos_scroll;
-                    const int sy = (j << 4) + ypos_scroll;
-
-                    if (wx >= 0 && wx < MapData::kSize && wy >= 0 && wy < MapData::kSize) {
-                        const MapObject &o = world.at(wx, wy);
-                        int actual = o.actual;
-                        if (actual < 0 || actual > 2) {
-                            actual = 0;
-                        }
-                        int tileId = o.tiles[actual] - 1;
-                        if (tileId >= 0) {
-                            tiles.drawTile(graph, graph.pv1, tileId, sx, sy, 0);
-                        } else {
-                            graph.fillbox(graph.pv1, sx, sy, sx + 15, sy + 15, 0);
-                        }
-                    } else {
-                        graph.fillbox(graph.pv1, sx, sy, sx + 15, sy + 15, 0);
-                    }
-                }
-            }
-
+            // Advance scroll state before any drawing so tiles and NPCs use the same values.
             if (scroll) {
                 switch (brujula) {
                     case DIR_NORTE:
@@ -887,6 +1147,95 @@ int main(int argc, char **argv) {
             } else {
                 xpos_ref = xpos_actual;
                 ypos_ref = ypos_actual;
+            }
+
+            // Update NPC smooth-scroll animation (runs every frame)
+            for (auto &npc : npcs) {
+                if (npc.scrolling) {
+                    switch (npc.facing) {
+                        case 0: // NORTE
+                            npc.scrollOffY -= scroll_vel;
+                            if (npc.scrollOffY <= -16) {
+                                npc.scrollOffX = 0; npc.scrollOffY = 0;
+                                npc.refX = npc.mapX; npc.refY = npc.mapY;
+                                npc.scrolling = false;
+                            }
+                            break;
+                        case 1: // ESTE
+                            npc.scrollOffX += scroll_vel;
+                            if (npc.scrollOffX >= 16) {
+                                npc.scrollOffX = 0; npc.scrollOffY = 0;
+                                npc.refX = npc.mapX; npc.refY = npc.mapY;
+                                npc.scrolling = false;
+                            }
+                            break;
+                        case 2: // SUR
+                            npc.scrollOffY += scroll_vel;
+                            if (npc.scrollOffY >= 16) {
+                                npc.scrollOffX = 0; npc.scrollOffY = 0;
+                                npc.refX = npc.mapX; npc.refY = npc.mapY;
+                                npc.scrolling = false;
+                            }
+                            break;
+                        case 3: // OESTE
+                            npc.scrollOffX -= scroll_vel;
+                            if (npc.scrollOffX <= -16) {
+                                npc.scrollOffX = 0; npc.scrollOffY = 0;
+                                npc.refX = npc.mapX; npc.refY = npc.mapY;
+                                npc.scrolling = false;
+                            }
+                            break;
+                        default: break;
+                    }
+                }
+            }
+
+            for (int j = -1; j < 14; ++j) {
+                for (int i = -1; i < 21; ++i) {
+                    const int wx = xpos_ref - 10 + i;
+                    const int wy = ypos_ref - 6 + j;
+                    const int sx = (i << 4) + xpos_scroll;
+                    const int sy = (j << 4) + ypos_scroll;
+
+                    if (wx >= 0 && wx < MapData::kSize && wy >= 0 && wy < MapData::kSize) {
+                        const MapObject &o = world.at(wx, wy);
+                        int actual = o.actual;
+                        if (actual < 0 || actual > 2) {
+                            actual = 0;
+                        }
+                        int tileId = o.tiles[actual] - 1;
+                        if (tileId >= 0) {
+                            tiles.drawTile(graph, graph.pv1, tileId, sx, sy, 0);
+                        } else {
+                            graph.fillbox(graph.pv1, sx, sy, sx + 15, sy + 15, 0);
+                        }
+                    } else {
+                        graph.fillbox(graph.pv1, sx, sy, sx + 15, sy + 15, 0);
+                    }
+                }
+            }
+
+            // Draw NPCs (before hero so hero renders on top)
+            for (auto &npc : npcs) {
+                const int nx = (npc.refX - xpos_ref + 10) * 16 + xpos_scroll + npc.scrollOffX;
+                const int ny = (npc.refY - ypos_ref + 6) * 16 + ypos_scroll + npc.scrollOffY - 2;
+                npc.sprite.posicionar(nx, ny);
+                {
+                    // Mirror hero logic: idle frame (facing) for first half of step,
+                    // walk frame (facing+4) for second half.
+                    bool inWalkFrame = false;
+                    if (npc.scrolling) {
+                        switch (npc.facing) {
+                            case 0: inWalkFrame = (npc.scrollOffY <= -8); break; // NORTE
+                            case 1: inWalkFrame = (npc.scrollOffX >=  8); break; // ESTE
+                            case 2: inWalkFrame = (npc.scrollOffY >=  8); break; // SUR
+                            case 3: inWalkFrame = (npc.scrollOffX <= -8); break; // OESTE
+                        }
+                    }
+                    const int offset = inWalkFrame ? (4 + npc.facing) : npc.facing;
+                    const int drawFrame = std::min(npc.frameFirst + offset, npc.frameLast);
+                    npc.sprite.dibujar(drawFrame, 0, graph);
+                }
             }
 
             int heroFrame = 2;
