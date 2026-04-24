@@ -354,7 +354,7 @@ int main(int argc, char **argv) {
     }
 
     SDL_Window *window = SDL_CreateWindow(
-        "Thendoria Port (SDL2)",
+        "Thendoria Chronicles",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
         960,
