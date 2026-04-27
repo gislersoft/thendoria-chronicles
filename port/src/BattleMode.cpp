@@ -180,9 +180,26 @@ bool BattleMode::load() {
         }
     }
 
-    // --- Background (bosquef.png: 320×200) ---
+    loadBackground();
+
+    loaded_ = true;
+    return true;
+}
+
+void BattleMode::setMapName(const std::string &name) {
+    mapName_ = name;
+    loadBackground();
+}
+
+void BattleMode::loadBackground() {
+    const char first = mapName_.empty() ? '\0'
+        : static_cast<char>(std::toupper(static_cast<unsigned char>(mapName_[0])));
+    const std::string bgFile = (first == 'D') ? "cavernaf.png"
+                             : (first == 'C') ? "castlef.png"
+                             : "bosquef.png";
+
     bgPixels_.assign(320 * 200, 0xFF102040u); // dark-blue fallback
-    const std::string bgPath = resolvePath("bosquef.png");
+    const std::string bgPath = resolvePath(bgFile);
     if (!bgPath.empty()) {
         SDL_Surface *raw = IMG_Load(bgPath.c_str());
         if (raw) {
@@ -211,11 +228,8 @@ bool BattleMode::load() {
                       << ": " << IMG_GetError() << '\n';
         }
     } else {
-        std::cerr << "BattleMode: bosquef.png not found — using solid background\n";
+        std::cerr << "BattleMode: " << bgFile << " not found -- using solid background\n";
     }
-
-    loaded_ = true;
-    return true;
 }
 
 void BattleMode::reset() {

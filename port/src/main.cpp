@@ -675,6 +675,7 @@ int main(int argc, char **argv) {
         "../maps/CASA.TXT"
         });
     }
+    std::string currentMapBaseName = std::filesystem::path(mapPath).filename().string();
     bool mapLoaded = false;
     if (!mapPath.empty()) {
         mapLoaded = world.loadFromFile(mapPath);
@@ -869,8 +870,28 @@ int main(int argc, char **argv) {
         // 'B' enters battle mode from gameplay
         const bool pressedB = keys[SDL_SCANCODE_B] != 0;
         if (pressedB && !prevB && !battleMode && !dialogo && !scroll) {
+            battle.setMapName(currentMapBaseName);
             battle.reset();
             battleMode = true;
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+            {
+                const std::string battleMusicPath = firstExistingPath({
+                    "sound/music/battleSong.mp3",
+                    "port/sound/music/battleSong.mp3",
+                    "../port/sound/music/battleSong.mp3",
+                    "../sound/music/battleSong.mp3"
+                });
+                if (!battleMusicPath.empty()) {
+                    Mix_HaltMusic();
+                    Mix_Music *bm = Mix_LoadMUS(battleMusicPath.c_str());
+                    if (bm) {
+                        Mix_PlayMusic(bm, -1);
+                    } else {
+                        std::cerr << "Mix_LoadMUS failed for battleSong.mp3: " << Mix_GetError() << '\n';
+                    }
+                }
+            }
+#endif
         }
         prevB = pressedB;
         const bool justPressedSpace = pressedSpace && !prevSpace;
@@ -1066,6 +1087,7 @@ int main(int argc, char **argv) {
                 dialogo = false;
                 dialogLines.clear();
                 npcs = loadNpcsForMap(pendingMapPath, npcRng);
+                currentMapBaseName = std::filesystem::path(pendingMapPath).filename().string();
                 std::cout << "Loaded map: " << pendingMapPath << " (target=" << pendingMapName << ")" << '\n';
 #if defined(THENDORIA_HAVE_SDL_MIXER)
                 {
@@ -1113,6 +1135,16 @@ int main(int argc, char **argv) {
             battle.draw(graph, font, static_cast<std::uint32_t>(SDL_GetTicks()));
             if (battle.wantsExit()) {
                 battleMode = false;
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+                {
+                    Mix_HaltMusic();
+                    if (exploreMusic) {
+                        if (Mix_PlayMusic(exploreMusic, -1) != 0) {
+                            std::cerr << "Mix_PlayMusic resume failed: " << Mix_GetError() << '\n';
+                        }
+                    }
+                }
+#endif
             }
             graph.wait_retrace();
             graph.volcar(graph.vga, graph.pv1);

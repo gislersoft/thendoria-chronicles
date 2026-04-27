@@ -43,6 +43,10 @@ public:
     // Call once after SDL_image is initialised.
     bool load();
 
+    // Set the current map name (base filename). Reloads the background image:
+    //   starts with 'D' → cavernaf.png, 'C' → castlef.png, default → bosquef.png
+    void setMapName(const std::string &name);
+
     // Reset all battle state for a new encounter.
     void reset();
 
@@ -65,8 +69,9 @@ private:
     SpriteCompat enemySprites_[kNEnemies]; // planta.png  — 7 frames, 60px
     SpriteCompat heroSprites_[kNHeroes];   // prof.png    — 8 frames, 53px
 
-    // Background (320×200 ARGB pixels loaded from bosquef.png)
+    // Background (320×200 ARGB pixels — image chosen by map name)
     std::vector<std::uint32_t> bgPixels_;
+    std::string mapName_;
 
     // Battle data
     BattleChar enemies_[kNEnemies];
@@ -125,5 +130,6 @@ private:
     void showHit(const char *txt, const SpriteCompat &s,
                  FontCompat &f, GraphCompat &g) const;
     bool demorar(std::uint32_t t0, float secs, std::uint32_t now) const;
+    void loadBackground();
     static std::string resolvePath(const std::string &name);
 };
