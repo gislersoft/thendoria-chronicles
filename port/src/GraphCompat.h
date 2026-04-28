@@ -41,6 +41,9 @@ public:
     void drawRgbaFrame(int x, int y, int w, int h, const std::uint32_t *img);
     std::uint32_t *getOverlay();
 
+    // Returns the last composited 320×200 ARGB frame (valid after presentLayers).
+    const std::uint32_t *getLastFrame() const { return renderer_.getLastFrame(); }
+
     void pal();
     void pal2();
     void copiar();

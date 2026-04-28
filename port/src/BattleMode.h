@@ -61,6 +61,9 @@ public:
     // True after the player presses 'E' to leave the battle.
     bool wantsExit() const { return wantsExit_; }
 
+    // Read-only access to the loaded background pixels (ARGB, 320×200).
+    const std::vector<std::uint32_t>& getBgPixels() const { return bgPixels_; }
+
 private:
     static constexpr int kNEnemies = 3;
     static constexpr int kNHeroes  = 1;
@@ -110,6 +113,12 @@ private:
     bool wantsExit_;
     bool loaded_;
 
+    // ---- Battle-start stripe-wipe transition ----
+    bool          stripeActive_;   // true while wipe is playing
+    std::uint32_t stripeStartMs_;  // timestamp when wipe began
+
+
+
     // Screen-space anchor positions for each sprite
     // kEX[0]/kEY[0] = front enemy, kEX[2]/kEY[2] = back enemy (drawn first)
     static const int kEX[kNEnemies];
@@ -129,6 +138,7 @@ private:
     void markSprite(const SpriteCompat &s, int color, GraphCompat &g) const;
     void showHit(const char *txt, const SpriteCompat &s,
                  FontCompat &f, GraphCompat &g) const;
+    void drawStripeWipe(GraphCompat &g, std::uint32_t nowMs);
     bool demorar(std::uint32_t t0, float secs, std::uint32_t now) const;
     void loadBackground();
     static std::string resolvePath(const std::string &name);

@@ -145,6 +145,8 @@ BattleMode::BattleMode() : rng_(std::random_device{}()) {
     reloj_ = reloj2_ = true;
     prevUp_ = prevDown_ = prevLeft_ = prevRight_ = false;
     prevSpace_ = prevEnter_ = prevE_ = false;
+    stripeActive_   = false;
+    stripeStartMs_  = 0;
 }
 
 bool BattleMode::load() {
@@ -268,6 +270,10 @@ void BattleMode::reset() {
     prevUp_ = prevDown_ = prevLeft_ = prevRight_ = false;
     prevSpace_ = prevEnter_ = prevE_ = false;
     wantsExit_ = false;
+
+    // Start the stripe-wipe animation when battle begins
+    stripeActive_  = true;
+    stripeStartMs_ = 0; // will be stamped on first draw call
 }
 
 // ---------------------------------------------------------------------------
@@ -276,13 +282,16 @@ void BattleMode::reset() {
 
 void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
 
-    // --- Exit key ---
+    // --- Exit key (always active, even during stripe wipe) ---
     const bool pressE = keys[SDL_SCANCODE_E] != 0;
     if (pressE && !prevE_) {
         wantsExit_ = true;
     }
     prevE_ = pressE;
     if (wantsExit_) return;
+
+    // Suppress battle input while the stripe-wipe is playing
+    if (stripeActive_) return;
 
     // --- Edge-detect movement / confirm keys ---
     const bool pressUp    = keys[SDL_SCANCODE_UP]    != 0;
@@ -488,6 +497,14 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
 // ---------------------------------------------------------------------------
 
 void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
+    // Stripe-wipe intro — plays once when battle first starts
+    if (stripeActive_) {
+        if (stripeStartMs_ == 0) stripeStartMs_ = nowMs;
+        drawStripeWipe(g, nowMs);
+        if (nowMs - stripeStartMs_ >= 1000) stripeActive_ = false;
+        return;
+    }
+
     // 1. Fill base with black (battle replaces map; pv1 must be clear)
     g.clr(g.pv1, 0);
     g.clr(g.pv2, 0);
@@ -555,6 +572,41 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
 // ---------------------------------------------------------------------------
 // Drawing helpers
 // ---------------------------------------------------------------------------
+
+void BattleMode::drawStripeWipe(GraphCompat &g, std::uint32_t nowMs) {
+    // 16 horizontal bands slide in from alternating sides over 1000 ms,
+    // revealing the battle background. Safe smoothstep easing.
+    g.clr(g.pv1, 0);
+    g.clr(g.pv2, 0);
+
+    const float rawT = std::min(1.0f,
+        static_cast<float>(nowMs - stripeStartMs_) / 1000.f);
+    const float t   = rawT * rawT * (3.f - 2.f * rawT);
+    const int   off = static_cast<int>(320.f * (1.f - t));
+
+    constexpr int kStripes = 16;
+    constexpr int kStripeH = 200 / kStripes;
+
+    if (bgPixels_.empty()) return;
+
+    // Build a shifted composite into a temporary buffer and push via drawRgbaFrame
+    static std::vector<std::uint32_t> frame(320 * 200, 0xFF000000u);
+    frame.assign(320 * 200, 0xFF000000u);
+
+    for (int s = 0; s < kStripes; ++s) {
+        const int y0   = s * kStripeH;
+        const int yEnd = (s == kStripes - 1) ? 200 : y0 + kStripeH;
+        const int shift = (s % 2 == 0) ? off : -off;
+        for (int y = y0; y < yEnd; ++y) {
+            for (int x = 0; x < 320; ++x) {
+                const int srcX = x + shift;
+                if (srcX >= 0 && srcX < 320)
+                    frame[y * 320 + x] = bgPixels_[y * 320 + srcX];
+            }
+        }
+    }
+    g.drawRgbaFrame(0, 0, 320, 200, frame.data());
+}
 
 void BattleMode::drawBg(GraphCompat &g) const {
     if (bgPixels_.empty()) return;

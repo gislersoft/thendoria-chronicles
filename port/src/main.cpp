@@ -19,6 +19,7 @@
 #include <initializer_list>
 #include <iostream>
 #include <map>
+#include <numeric>
 #include <random>
 #include <string>
 #include <vector>
@@ -849,6 +850,16 @@ int main(int argc, char **argv) {
     bool battleMode = false;
     bool prevB = false;
 
+    // Battle-entry transition — pixel dissolve (black → battle bg)
+    // Phase 0 = inactive, 1 = dissolve running
+    int           btPhase     = 0;
+    std::uint32_t btStartMs   = 0;
+    int           btRevealed  = 0;           // pixels flipped so far
+    std::vector<int>            btShuffle;   // random pixel order
+    std::vector<std::uint32_t>  btDstPx;    // battle bg pixels (ARGB)
+    std::vector<std::uint32_t>  btMixPx;    // working composite
+    SDL_Texture  *btMixTex    = nullptr;     // streaming texture for composite
+
     bool running = true;
     while (running) {
         const std::uint64_t frameStartMs = SDL_GetTicks64();
@@ -867,31 +878,33 @@ int main(int argc, char **argv) {
         const bool pressedSpace = keys[SDL_SCANCODE_SPACE] != 0;
         const bool pressedEnter = keys[SDL_SCANCODE_RETURN] != 0;
 
-        // 'B' enters battle mode from gameplay
+        // 'B' enters battle mode from gameplay (starts the entry transition)
         const bool pressedB = keys[SDL_SCANCODE_B] != 0;
-        if (pressedB && !prevB && !battleMode && !dialogo && !scroll) {
+        if (pressedB && !prevB && !battleMode && !btPhase && !dialogo && !scroll) {
             battle.setMapName(currentMapBaseName);
-            battle.reset();
-            battleMode = true;
-#if defined(THENDORIA_HAVE_SDL_MIXER)
-            {
-                const std::string battleMusicPath = firstExistingPath({
-                    "sound/music/battleSong.mp3",
-                    "port/sound/music/battleSong.mp3",
-                    "../port/sound/music/battleSong.mp3",
-                    "../sound/music/battleSong.mp3"
-                });
-                if (!battleMusicPath.empty()) {
-                    Mix_HaltMusic();
-                    Mix_Music *bm = Mix_LoadMUS(battleMusicPath.c_str());
-                    if (bm) {
-                        Mix_PlayMusic(bm, -1);
-                    } else {
-                        std::cerr << "Mix_LoadMUS failed for battleSong.mp3: " << Mix_GetError() << '\n';
-                    }
-                }
-            }
-#endif
+
+            // Capture the current 320x200 composited gameplay frame (safe — no SDL readback)
+            const std::uint32_t *lastFrame = graph.getLastFrame();
+            btMixPx.assign(lastFrame, lastFrame + 320 * 200);
+
+            // Destination: solid black
+            btDstPx.assign(320 * 200, 0xFF000000u);
+
+            // Random dissolve order
+            btShuffle.resize(320 * 200);
+            std::iota(btShuffle.begin(), btShuffle.end(), 0);
+            std::shuffle(btShuffle.begin(), btShuffle.end(),
+                         std::mt19937{std::random_device{}()});
+            btRevealed = 0;
+
+            if (btMixTex) { SDL_DestroyTexture(btMixTex); btMixTex = nullptr; }
+            btMixTex = SDL_CreateTexture(renderer,
+                                         SDL_PIXELFORMAT_ARGB8888,
+                                         SDL_TEXTUREACCESS_STREAMING,
+                                         320, 200);
+
+            btPhase   = 1;
+            btStartMs = static_cast<std::uint32_t>(SDL_GetTicks());
         }
         prevB = pressedB;
         const bool justPressedSpace = pressedSpace && !prevSpace;
@@ -1127,6 +1140,62 @@ int main(int argc, char **argv) {
             pendingMapPath.clear();
             pendingMapName.clear();
         }
+
+        // ---- Battle entry transition: pixel dissolve (black → battle bg) ----
+        if (btPhase != 0) {
+            const std::uint32_t btElapsed =
+                static_cast<std::uint32_t>(SDL_GetTicks()) - btStartMs;
+
+            constexpr std::uint32_t kDissolveDuration = 1500; // ms
+            const int totalPx = 320 * 200;
+
+            const float progress = std::min(1.0f,
+                static_cast<float>(btElapsed) / static_cast<float>(kDissolveDuration));
+            const int target = static_cast<int>(progress * static_cast<float>(totalPx));
+
+            // Flip only newly-due pixels (never re-process already-revealed ones)
+            for (int i = btRevealed; i < target; ++i)
+                btMixPx[btShuffle[i]] = btDstPx[btShuffle[i]];
+            btRevealed = target;
+
+            if (btMixTex) {
+                SDL_UpdateTexture(btMixTex, nullptr,
+                                  btMixPx.data(),
+                                  320 * static_cast<int>(sizeof(std::uint32_t)));
+                SDL_RenderClear(renderer);
+                SDL_RenderCopy(renderer, btMixTex, nullptr, nullptr);
+                SDL_RenderPresent(renderer);
+            }
+
+            if (btElapsed >= kDissolveDuration) {
+                btPhase    = 0;
+                btRevealed = 0;
+                if (btMixTex) { SDL_DestroyTexture(btMixTex); btMixTex = nullptr; }
+                battle.reset();
+                battleMode = true;
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+                {
+                    const std::string battleMusicPath = firstExistingPath({
+                        "sound/music/battleSong.mp3",
+                        "port/sound/music/battleSong.mp3",
+                        "../port/sound/music/battleSong.mp3",
+                        "../sound/music/battleSong.mp3"
+                    });
+                    if (!battleMusicPath.empty()) {
+                        Mix_HaltMusic();
+                        Mix_Music *bm = Mix_LoadMUS(battleMusicPath.c_str());
+                        if (bm) { Mix_PlayMusic(bm, -1); }
+                    }
+                }
+#endif
+            }
+
+            const std::uint64_t bElapsed = SDL_GetTicks64() - frameStartMs;
+            if (bElapsed < targetFrameMs)
+                SDL_Delay(static_cast<std::uint32_t>(targetFrameMs - bElapsed));
+            continue;
+        }
+        // ---- End battle entry transition ----
 
         // ---- Battle mode: full-screen turn-based combat ----
         if (battleMode) {

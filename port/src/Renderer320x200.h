@@ -59,6 +59,9 @@ public:
     void present(const unsigned char *px);
     void present(const unsigned char *px, const unsigned char *top);
 
+    // Returns the last composited 320×200 ARGB frame (valid after present()).
+    const std::uint32_t *getLastFrame() const { return rgbaScratch_.data(); }
+
 private:
     SDL_Renderer *renderer_;
     SDL_Texture *gridTexture_;   // kScaledWidth × kScaledHeight — used with gameboyFilter_
