@@ -100,8 +100,9 @@ void BattleChar::toStr(int n, char *buf, int buflen) {
         std::memmove(tmp, tmp + len - cap, cap + 1);
         len = cap;
     }
-    for (int k = 0; k < buflen - 1 && tmp[k]; ++k) buf[k] = tmp[k];
-    buf[buflen - 1] = '\0';
+    int k;
+    for (k = 0; k < buflen - 1 && tmp[k]; ++k) buf[k] = tmp[k];
+    buf[k] = '\0'; // null-terminate right after last digit, not at end of buffer
 }
 
 // ---------------------------------------------------------------------------
@@ -148,6 +149,8 @@ BattleMode::BattleMode() : rng_(std::random_device{}()) {
     prevSpace_ = prevEnter_ = prevE_ = false;
     stripeActive_   = false;
     stripeStartMs_  = 0;
+    healFlash_        = false;
+    healFlashStartMs_ = 0;
 }
 
 bool BattleMode::load() {
@@ -271,6 +274,9 @@ void BattleMode::reset() {
     prevSpace_ = prevEnter_ = prevE_ = false;
     wantsExit_ = false;
 
+    healFlash_        = false;
+    healFlashStartMs_ = 0;
+
     // Start the stripe-wipe animation when battle begins
     stripeActive_  = true;
     stripeStartMs_ = 0; // will be stamped on first draw call
@@ -334,10 +340,17 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                         hero.hp = std::min(hero.hpMax, hero.hp + items_[0].healHp);
                         --items_[0].qty;
                     }
+                    BattleChar::toStr(items_[0].healHp, strtemp_, static_cast<int>(sizeof(strtemp_)));
+                    healFlash_        = true;
+                    healFlashStartMs_ = nowMs;
                     selOpcion_ = false;
                     op_        = 5;
                     control1_  = 4;
-                    reloj2_    = true;
+                    // Assign start2Ms_ directly — reloj2_=true would be
+                    // processed next frame, leaving the old stale timestamp
+                    // and causing case 4 to fire immediately this same frame.
+                    start2Ms_ = nowMs;
+                    reloj2_   = false;
                 } else { // ATACAR
                     control1_  = 1;
                     selOpcion_ = false;
@@ -414,6 +427,7 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                 if (demorar(start2Ms_, 2.f, nowMs) &&
                     enemySprites_[eneActual_].animacion == 0 &&
                     heroSprites_[proActual_].animacion  == 0) {
+                    healFlash_ = false;
                     ++proActual_;
                     op_ = 1;
                     if (proActual_ >= kNHeroes) {
@@ -513,7 +527,7 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
     drawBg(g);
 
     // 3. Attack-animation sprites (mirror original control1_==4 / control2_==4 drawing)
-    if (turno_ == 1 && control1_ == 4) {
+    if (turno_ == 1 && control1_ == 4 && !healFlash_) {
         // Enemy gets hit (plays frames 0-4 one-shot)
         if (enemySprites_[eneActual_].animacion == 1) {
             enemySprites_[eneActual_].posicionar(kEX[eneActual_], kEY[eneActual_]);
@@ -541,7 +555,7 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
                 kHY[proActual_] -  5);
             enemySprites_[eneActual_].animar(5, 6, 0, nowMs, g);
         }
-        showHit(strtemp_, heroSprites_[proActual_], f, g);
+        showHit(strtemp_, heroSprites_[proActual_], f, g, 46); // yellow — hero takes damage
     }
 
     // 4. Draw all enemies that are NOT currently in an attack animation
@@ -554,11 +568,58 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
                    enemies_[eneActual_].vivo == 1 ? 157 : 69, g);
     }
 
+    // 6b prep — snapshot the overlay region before drawing heroes so we can
+    // tint only the sprite pixels (pixels that the sprite draw changed).
+    const bool doHealFlash = (turno_ == 1 && control1_ == 4 && healFlash_);
+    const bool flashOn     = doHealFlash && ((nowMs / 80) % 2 == 0);
+    int hfX1 = 0, hfY1 = 0, hfX2 = 0, hfY2 = 0, hfW = 0;
+    std::vector<std::uint32_t> heroPreDraw;
+    if (flashOn) {
+        heroSprites_[proActual_].posicionar(kHX[proActual_], kHY[proActual_]);
+        hfX1 = std::max(0, heroSprites_[proActual_].x1);
+        hfY1 = std::max(0, heroSprites_[proActual_].y1);
+        hfX2 = std::min(319, heroSprites_[proActual_].x2);
+        hfY2 = std::min(199, heroSprites_[proActual_].y2);
+        hfW  = hfX2 - hfX1 + 1;
+        const int hfH = hfY2 - hfY1 + 1;
+        heroPreDraw.resize(static_cast<std::size_t>(hfW * hfH));
+        const std::uint32_t *ov = g.getOverlay();
+        for (int py = hfY1; py <= hfY2; ++py)
+            for (int px = hfX1; px <= hfX2; ++px)
+                heroPreDraw[static_cast<std::size_t>((py - hfY1) * hfW + (px - hfX1))]
+                    = ov[py * 320 + px];
+    }
+
     // 6. Draw all heroes that are NOT currently in a hurt animation
     drawHeroesIdle(g, nowMs);
 
+    // 6b. Heal-flash feedback — tint only pixels that the sprite draw changed,
+    // so the background/transparent areas are left untouched.
+    if (doHealFlash) {
+        heroSprites_[proActual_].posicionar(kHX[proActual_], kHY[proActual_]);
+        if (flashOn && !heroPreDraw.empty()) {
+            std::uint32_t *ov = g.getOverlay();
+            for (int py = hfY1; py <= hfY2; ++py) {
+                for (int px = hfX1; px <= hfX2; ++px) {
+                    std::uint32_t &pixel = ov[py * 320 + px];
+                    const std::uint32_t saved =
+                        heroPreDraw[static_cast<std::size_t>((py - hfY1) * hfW + (px - hfX1))];
+                    if (pixel == saved) continue; // background pixel — skip
+                    const std::uint32_t r  = (pixel >> 16) & 0xFFu;
+                    const std::uint32_t gv = (pixel >>  8) & 0xFFu;
+                    const std::uint32_t b  =  pixel        & 0xFFu;
+                    pixel = 0xFF000000u
+                          | ((r  * 3u / 10u) << 16)
+                          | (std::min(255u, gv + 120u) << 8)
+                          | (b  * 3u / 10u);
+                }
+            }
+        }
+        showHeal(strtemp_, heroSprites_[proActual_], f, g);
+    }
+
     // 7. UI drawn on top layer (pv2)
-    drawStats(g, f);
+    drawStats(g, f, nowMs);
     drawMenu(g, f);
 }
 
@@ -639,35 +700,58 @@ void BattleMode::markSprite(const SpriteCompat &s, int color, GraphCompat &g) co
 }
 
 void BattleMode::showHit(const char *txt, const SpriteCompat &s,
-                          FontCompat &f, GraphCompat &g) const {
+                          FontCompat &f, GraphCompat &g, unsigned char color) const {
     // Draw damage number near the top-left of the sprite (pv2 layer)
     const int tx = s.x1;
     const int ty = std::max(0, s.y1 - 8);
     g.fillbox(g.pv2, tx - 1, ty - 1, tx + 28, ty + 8, 0);
-    f.putstr(g.pv2, tx, ty, txt, g, 0, 15);
+    f.putstr(g.pv2, tx, ty, txt, g, 0, color);
+}
+
+void BattleMode::showHeal(const char *txt, const SpriteCompat &s,
+                           FontCompat &f, GraphCompat &g) const {
+    // Draw heal number above the hero sprite in bright green (pv2 layer)
+    // Color 190 = (76, 212, 116) bright green in the custom palette
+    const int tx = s.x1;
+    const int ty = std::max(0, s.y1 - 8);
+    g.fillbox(g.pv2, tx - 1, ty - 1, tx + 28, ty + 8, 0);
+    f.putstr(g.pv2, tx, ty, txt, g, 0, 190);
 }
 
 // ---------------------------------------------------------------------------
 // drawStats — HP table at bottom-left
 // ---------------------------------------------------------------------------
-void BattleMode::drawStats(GraphCompat &g, FontCompat &f) const {
+void BattleMode::drawStats(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) const {
     const BattleChar &hero = heroes_[0];
 
-    // Current HP in yellow, max HP in white — color difference distinguishes them
+    // HP bar color:
+    //   hp >  300 → green  (190)
+    //   hp >  100 → yellow (46)
+    //   hp <= 100 → flicker yellow (46) / red (69) every 300 ms
+    unsigned char barColor;
+    if (hero.hp > 300) {
+        barColor = 190; // green
+    } else if (hero.hp > 100) {
+        barColor = 46;  // yellow
+    } else {
+        barColor = ((nowMs / 300) % 2 == 0) ? 46 : 69; // yellow / red flicker
+    }
+
+    // Current HP number uses same color as the bar; max HP in white
     char curHp[8] = {}, maxHp[8] = {};
     BattleChar::toStr(hero.hp,    curHp, 8);
     BattleChar::toStr(hero.hpMax, maxHp, 8);
-    f.putstr(g.pv2,  4, 170, curHp, g, 0, 46); // yellow
+    f.putstr(g.pv2,  4, 170, curHp, g, 0, barColor);
     f.putstr(g.pv2, 32, 170, maxHp, g, 0, 15); // white
 
-    // HP bar with "HP:" label to the left (3px gap between text and bar)
-    f.putstr(g.pv2, 4, 178, "HP:", g, 0, 15); // "HP:" label — 3 chars × 8px = 24px + 3px gap → bar at x=31
+    // HP bar with "HP:" label to the left
+    f.putstr(g.pv2, 4, 178, "HP:", g, 0, 15);
     constexpr int kBarX = 31;
     constexpr int kBarW = 36;
     const int hpBar = (hero.hpMax > 0)
         ? std::clamp(static_cast<int>((float)kBarW * hero.hp / hero.hpMax), 0, kBarW)
         : 0;
-    g.fillbox(g.pv2, kBarX, 178, kBarX + hpBar, 183, 46); // yellow fill
+    g.fillbox(g.pv2, kBarX, 178, kBarX + hpBar, 183, barColor);
     g.box(g.pv2,     kBarX, 178, kBarX + kBarW, 183, 15); // white border
 }
 
@@ -688,7 +772,7 @@ void BattleMode::drawMenu(GraphCompat &g, FontCompat &f) const {
     const unsigned char colSelected = 46;  // yellow-gold
 
     // "MENU" label above ATACAR
-    f.putstr(g.pv2, 170, 164, "MENU", g, 0, 15);
+    f.putstr(g.pv2, 170, 164, "MENU", g, 0, 157); // orange
 
     f.putstr(g.pv2, 170, 177, "ATACAR", g, 0,
              (show && op_ == 1) ? colSelected : colNormal);

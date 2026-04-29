@@ -112,6 +112,10 @@ private:
     bool          stripeActive_;   // true while wipe is playing
     std::uint32_t stripeStartMs_;  // timestamp when wipe began
 
+    // ---- Heal-flash feedback (after using a potion) ----
+    bool          healFlash_;        // true while hero is flashing green
+    std::uint32_t healFlashStartMs_; // timestamp when heal flash began
+
 
 
     // Screen-space anchor positions for each sprite
@@ -130,14 +134,16 @@ private:
 
     void drawBg(GraphCompat &g) const;
     void drawMenu(GraphCompat &g, FontCompat &f) const;
-    void drawStats(GraphCompat &g, FontCompat &f) const;
+    void drawStats(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) const;
     // drawEnemies / drawHeroes draw idle sprites and drive death animations.
     // Attack animations are driven directly in draw() to mirror original ordering.
     void drawEnemiesIdle(GraphCompat &g, std::uint32_t nowMs);
     void drawHeroesIdle(GraphCompat &g, std::uint32_t nowMs);
     void markSprite(const SpriteCompat &s, int color, GraphCompat &g) const;
     void showHit(const char *txt, const SpriteCompat &s,
-                 FontCompat &f, GraphCompat &g) const;
+                 FontCompat &f, GraphCompat &g, unsigned char color = 15) const;
+    void showHeal(const char *txt, const SpriteCompat &s,
+                  FontCompat &f, GraphCompat &g) const;
     void drawStripeWipe(GraphCompat &g, std::uint32_t nowMs);
     bool demorar(std::uint32_t t0, float secs, std::uint32_t now) const;
     void loadBackground();
