@@ -138,9 +138,10 @@ BattleMode::BattleMode() : rng_(std::random_device{}()) {
     wantsExit_ = false;
     // zero-init state
     turno_ = control1_ = control2_ = 0;
-    op_ = op2_ = op3_ = magiaEscogida_ = 0;
+    op_ = 0;
     eneActual_ = proActual_ = accion_ = 0;
-    selOpcion_ = selEnemigo_ = selMagia_ = selSub_ = false;
+    selOpcion_ = selEnemigo_ = false;
+    itemCount_ = 0;
     startMs_ = start2Ms_ = 0;
     reloj_ = reloj2_ = true;
     prevUp_ = prevDown_ = prevLeft_ = prevRight_ = false;
@@ -247,17 +248,16 @@ void BattleMode::reset() {
     turno_    = 1;
     control1_ = 0;
     control2_ = 0;
-    op_       = 1;
-    op2_      = 1;
-    op3_      = 1;
-    magiaEscogida_ = 0;
-    eneActual_     = 0;
-    proActual_     = 0;
-    accion_        = 1;
-    selOpcion_ = false;
+    op_        = 1;
+    eneActual_ = 0;
+    proActual_ = 0;
+    accion_    = 1;
+    selOpcion_  = false;
     selEnemigo_ = false;
-    selMagia_  = false;
-    selSub_    = false;
+
+    // Initialize item inventory
+    itemCount_ = 1;
+    items_[0] = {"POSION", 99, 100};
 
     startMs_  = 0;
     start2Ms_ = 0;
@@ -324,50 +324,54 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
 
         // --- Confirm / back ---
         if (justConf && inputOk) {
-            if (selSub_) {
-                selSub_   = false;
-                control1_ = 3;
-                op3_ = 1; op2_ = 1; op_ = 1;
-            } else if (selMagia_) {
-                op2_      = 7;   // triggers submenu display next frame
-                selMagia_ = false;
-                selSub_   = true;
-            } else if (selEnemigo_) {
+            if (selEnemigo_) {
                 selEnemigo_ = false;
                 control1_   = 2;
             } else if (selOpcion_) {
-                control1_  = 1;
-                selOpcion_ = false;
+                if (op_ == 2) { // POSION — use directly, no submenu
+                    if (items_[0].qty > 0) {
+                        BattleChar &hero = heroes_[proActual_];
+                        hero.hp = std::min(hero.hpMax, hero.hp + items_[0].healHp);
+                        --items_[0].qty;
+                    }
+                    selOpcion_ = false;
+                    op_        = 5;
+                    control1_  = 4;
+                    reloj2_    = true;
+                } else { // ATACAR
+                    control1_  = 1;
+                    selOpcion_ = false;
+                }
             }
             reloj_ = true;
         }
 
-        // --- Navigate enemy selection (left / right) ---
+        // --- Navigate enemy selection (left / right) — skip dead enemies ---
         if (inputOk && justLeft && selEnemigo_) {
-            eneActual_ = (eneActual_ > 0) ? eneActual_ - 1 : kNEnemies - 1;
+            int next = (eneActual_ > 0) ? eneActual_ - 1 : kNEnemies - 1;
+            for (int tries = 0; tries < kNEnemies; ++tries) {
+                if (enemies_[next].vivo == 1) break;
+                next = (next > 0) ? next - 1 : kNEnemies - 1;
+            }
+            eneActual_ = next;
             reloj_ = true;
         }
         if (inputOk && justRight && selEnemigo_) {
-            eneActual_ = (eneActual_ < kNEnemies - 1) ? eneActual_ + 1 : 0;
+            int next = (eneActual_ < kNEnemies - 1) ? eneActual_ + 1 : 0;
+            for (int tries = 0; tries < kNEnemies; ++tries) {
+                if (enemies_[next].vivo == 1) break;
+                next = (next < kNEnemies - 1) ? next + 1 : 0;
+            }
+            eneActual_ = next;
             reloj_ = true;
         }
 
         // --- Navigate menu (up / down) ---
-        if (inputOk && justUp) {
-            if (selOpcion_) { --op_;  reloj_ = true; }
-            if (selMagia_)  { --op2_; reloj_ = true; }
-            if (selSub_)    { --op3_; reloj_ = true; }
-        }
-        if (inputOk && justDown) {
-            if (selOpcion_) { ++op_;  reloj_ = true; }
-            if (selMagia_)  { ++op2_; reloj_ = true; }
-            if (selSub_)    { ++op3_; reloj_ = true; }
-        }
+        if (inputOk && justUp)   { if (selOpcion_) { --op_; reloj_ = true; } }
+        if (inputOk && justDown) { if (selOpcion_) { ++op_; reloj_ = true; } }
 
-        // Wrap menu cursors (original: case 0/4 for op, 0/6 for op2, 0/4 for op3)
-        if (op_  < 1) op_  = 3;  if (op_  > 3) op_  = 1;
-        if (op2_ < 1) op2_ = 5;  if (op2_ > 5) op2_ = 1;
-        if (op3_ < 1) op3_ = 3;  if (op3_ > 3) op3_ = 1;
+        // Wrap main menu cursor (ATACAR=1, ITEM=2)
+        if (op_ < 1) op_ = 2;  if (op_ > 2) op_ = 1;
 
         // --- Player state machine ---
         switch (control1_) {
@@ -375,23 +379,19 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                 selOpcion_ = true;
                 break;
             case 1:
+                // Advance to first living enemy before entering selection
+                for (int i = 0; i < kNEnemies; ++i) {
+                    if (enemies_[eneActual_].vivo == 1) break;
+                    eneActual_ = (eneActual_ + 1) % kNEnemies;
+                }
                 selEnemigo_ = true;
                 break;
             case 2:
                 if (enemies_[eneActual_].vivo == 1) {
-                    switch (op_) {
-                        case 1: // ATACAR
-                            control1_ = 3;
-                            break;
-                        case 2: // MAGIA
-                            if (!selSub_) selMagia_ = true;
-                            else          selMagia_ = false;
-                            op_ = 5; // hide normal menu while in magic sub-menu
-                            break;
-                        case 3: // ITEM (not implemented — return to option select)
-                            control1_ = 0;
-                            break;
+                    if (op_ == 1) { // ATACAR
+                        control1_ = 3;
                     }
+                    // ITEM is handled in the justConf/selOpcion_ branch — no enemy pick needed
                 } else {
                     // Target is dead — reselect
                     control1_ = 0;
@@ -560,13 +560,6 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
     // 7. UI drawn on top layer (pv2)
     drawStats(g, f);
     drawMenu(g, f);
-    if (selMagia_ || selSub_) {
-        drawMagicMenu(g, f);
-    }
-
-    // 8. Minimal "press E to exit" hint
-    g.fillbox(g.pv2, 238, 188, 319, 198, 230);
-    f.putstr(g.pv2, 240, 190, "E: SALIR", g, 230, 15);
 }
 
 // ---------------------------------------------------------------------------
@@ -655,107 +648,57 @@ void BattleMode::showHit(const char *txt, const SpriteCompat &s,
 }
 
 // ---------------------------------------------------------------------------
-// drawStats — HP / MP table at bottom-left (mirrors Batalla::Mostrartabla)
+// drawStats — HP table at bottom-left
 // ---------------------------------------------------------------------------
 void BattleMode::drawStats(GraphCompat &g, FontCompat &f) const {
     const BattleChar &hero = heroes_[0];
 
-    // Background box
-    g.fillbox(g.pv2,  0, 162, 165, 199, 230);
-    g.box(g.pv2,      0, 162, 165, 199, 15);
-
-    // HP row
-    f.putstr(g.pv2,  4, 171, "HP", g, 230, 15);
-
-    char curHp[8], maxHp[8];
+    // Current HP in yellow, max HP in white — color difference distinguishes them
+    char curHp[8] = {}, maxHp[8] = {};
     BattleChar::toStr(hero.hp,    curHp, 8);
     BattleChar::toStr(hero.hpMax, maxHp, 8);
-    f.putstr(g.pv2,  28, 164, curHp, g, 230, 32);  // current HP (green)
-    f.putstr(g.pv2,  70, 164, maxHp, g, 230, 15);  // max HP
+    f.putstr(g.pv2,  4, 170, curHp, g, 0, 46); // yellow
+    f.putstr(g.pv2, 32, 170, maxHp, g, 0, 15); // white
 
+    // HP bar with "HP:" label to the left (3px gap between text and bar)
+    f.putstr(g.pv2, 4, 178, "HP:", g, 0, 15); // "HP:" label — 3 chars × 8px = 24px + 3px gap → bar at x=31
+    constexpr int kBarX = 31;
+    constexpr int kBarW = 36;
     const int hpBar = (hero.hpMax > 0)
-        ? std::clamp(static_cast<int>(33.f * hero.hp / hero.hpMax), 0, 33)
+        ? std::clamp(static_cast<int>((float)kBarW * hero.hp / hero.hpMax), 0, kBarW)
         : 0;
-    g.fillbox(g.pv2, 28, 170, 28 + hpBar, 173, 32); // green fill
-    g.box(g.pv2,     28, 170, 61,         173,  0); // black border
-
-    // MP row
-    f.putstr(g.pv2, 4, 182, "MP", g, 230, 84);
-
-    char curMp[8], maxMp[8];
-    BattleChar::toStr(hero.mp,    curMp, 8);
-    BattleChar::toStr(hero.mpMax, maxMp, 8);
-    f.putstr(g.pv2,  28, 177, curMp, g, 230, 84);  // current MP (blue)
-    f.putstr(g.pv2,  70, 177, maxMp, g, 230, 15);
-
-    const int mpBar = (hero.mpMax > 0)
-        ? std::clamp(static_cast<int>(33.f * hero.mp / hero.mpMax), 0, 33)
-        : 0;
-    g.fillbox(g.pv2, 28, 183, 28 + mpBar, 186, 84); // blue fill
-    g.box(g.pv2,     28, 183, 61,         186,  0);
-
-    // Party slots 2 & 3 (placeholder)
-    f.putstr(g.pv2, 90, 177, "VACIO", g, 230, 15);
-    f.putstr(g.pv2, 130, 177, "VACIO", g, 230, 15);
+    g.fillbox(g.pv2, kBarX, 178, kBarX + hpBar, 183, 46); // yellow fill
+    g.box(g.pv2,     kBarX, 178, kBarX + kBarW, 183, 15); // white border
 }
 
 // ---------------------------------------------------------------------------
-// drawMenu — main action menu at bottom-right (mirrors Batalla::menu)
+// drawMenu — main action menu at bottom-right
 // ---------------------------------------------------------------------------
 void BattleMode::drawMenu(GraphCompat &g, FontCompat &f) const {
-    g.fillbox(g.pv2, 167, 162, 237, 199, 230);
-    g.box(g.pv2,     167, 162, 237, 199,  15);
-
     // Turn indicator
     if (turno_ == 1) {
-        f.putstr(g.pv2, 170, 163, "TU TURNO", g, 230, 32);
+        f.putstr(g.pv2, 250, 177, "TU TURNO", g, 0, 157); // orange
     } else {
-        f.putstr(g.pv2, 170, 163, "ENEMIGO", g, 230, 69);
+        f.putstr(g.pv2, 250, 177, "ENEMIGO",  g, 0, 69);  // red
     }
 
-    // op_ == 5 means menu is hidden (during animation or magic sub-menu)
-    const bool show = (op_ >= 1 && op_ <= 3);
+    // op_ == 5 means menu is hidden during animation
+    const bool show = (op_ >= 1 && op_ <= 2);
     const unsigned char colNormal   = 15;  // white
     const unsigned char colSelected = 46;  // yellow-gold
 
-    f.putstr(g.pv2, 170, 172, "ATACAR", g, 230,
+    // "MENU" label above ATACAR
+    f.putstr(g.pv2, 170, 164, "MENU", g, 0, 15);
+
+    f.putstr(g.pv2, 170, 177, "ATACAR", g, 0,
              (show && op_ == 1) ? colSelected : colNormal);
-    f.putstr(g.pv2, 170, 182, "MAGIA",  g, 230,
+
+    // POSION with current count
+    char pocionLabel[12] = {};
+    const int qty = (itemCount_ > 0) ? items_[0].qty : 0;
+    std::snprintf(pocionLabel, sizeof(pocionLabel), "POSION %d", qty);
+    f.putstr(g.pv2, 170, 190, pocionLabel, g, 0,
              (show && op_ == 2) ? colSelected : colNormal);
-    f.putstr(g.pv2, 170, 192, "ITEM",   g, 230,
-             (show && op_ == 3) ? colSelected : colNormal);
 }
 
-// ---------------------------------------------------------------------------
-// drawMagicMenu — magic type + level sub-menus (mirrors Batalla::menu_magia)
-// ---------------------------------------------------------------------------
-void BattleMode::drawMagicMenu(GraphCompat &g, FontCompat &f) {
-    // Magic type list box
-    g.fillbox(g.pv2, 65, 105, 105, 161, 230);
-    g.box(g.pv2,     65, 105, 105, 161,  15);
 
-    static const char *kMagics[5] = {"AIRE", "AGUA", "FUEGO", "TIERRA", "VIDA"};
-    for (int i = 0; i < 5; ++i) {
-        const unsigned char col = (selMagia_ && op2_ == i + 1) ? 46 : 15;
-        f.putstr(g.pv2, 70, 110 + i * 10, kMagics[i], g, 230, col);
-    }
-
-    // Magic level sub-menu (shown after type is chosen)
-    if (selSub_ || op2_ == 7) {
-        g.fillbox(g.pv2, 106, 125, 160, 161, 230);
-        g.box(g.pv2,     106, 125, 160, 161,  15);
-
-        const BattleChar &hero = heroes_[proActual_];
-        const int maxLvl = (magiaEscogida_ >= 0 && magiaEscogida_ < 5)
-                            ? hero.arr_magia[magiaEscogida_] : 0;
-
-        for (int lvl = 1; lvl <= 3; ++lvl) {
-            const char *label = (lvl == 1) ? "NIVEL1" :
-                                (lvl == 2) ? "NIVEL2" : "NIVEL3";
-            const unsigned char col = (lvl <= maxLvl)
-                ? ((selSub_ && op3_ == lvl) ? 46 : 15)
-                : 186; // greyed out
-            f.putstr(g.pv2, 110, 125 + (lvl - 1) * 10, label, g, 230, col);
-        }
-    }
-}

@@ -84,17 +84,12 @@ private:
     int turno_;              // 1 = player turn, 0 = enemy turn
     int control1_;           // player action phase (0–4)
     int control2_;           // enemy action phase (0–4)
-    int op_;                 // main menu cursor: 1=ATACAR 2=MAGIA 3=ITEM (5=hidden)
-    int op2_;                // magic-type cursor (1–5)
-    int op3_;                // magic-level cursor (1–3)
-    int magiaEscogida_;      // chosen magic index
+    int op_;                 // main menu cursor: 1=ATACAR 2=POSION (5=hidden)
     int eneActual_;          // current enemy index
     int proActual_;          // current hero index
     int accion_;             // enemy's chosen action
     bool selOpcion_;         // player is choosing menu option
     bool selEnemigo_;        // player is choosing target enemy
-    bool selMagia_;          // player is choosing magic type
-    bool selSub_;            // player is choosing magic level
 
     // ---- Timing (ported from clock_t start/start2 + reloj/reloj2 flags) ----
     std::uint32_t startMs_;   // debounce timer origin
@@ -127,9 +122,14 @@ private:
     static const int kHY[kNHeroes];
 
     // ---- Drawing helpers ----
+    // Item inventory
+    struct BattleItem { char name[16]; int qty; int healHp; };
+    static constexpr int kMaxItems = 8;
+    BattleItem  items_[kMaxItems];
+    int         itemCount_;
+
     void drawBg(GraphCompat &g) const;
     void drawMenu(GraphCompat &g, FontCompat &f) const;
-    void drawMagicMenu(GraphCompat &g, FontCompat &f);
     void drawStats(GraphCompat &g, FontCompat &f) const;
     // drawEnemies / drawHeroes draw idle sprites and drive death animations.
     // Attack animations are driven directly in draw() to mirror original ordering.
