@@ -154,6 +154,12 @@ BattleMode::BattleMode() : rng_(std::random_device{}()) {
     for (int i = 0; i < kNEnemies; ++i) {
         enemyDeathShake_[i]   = false;
         enemyDeathShakeMs_[i] = 0;
+        enemyHitShake_[i]     = false;
+        enemyHitShakeMs_[i]   = 0;
+    }
+    for (int i = 0; i < kNHeroes; ++i) {
+        heroShake_[i]   = false;
+        heroShakeMs_[i] = 0;
     }
 }
 
@@ -283,6 +289,12 @@ void BattleMode::reset() {
     for (int i = 0; i < kNEnemies; ++i) {
         enemyDeathShake_[i]   = false;
         enemyDeathShakeMs_[i] = 0;
+        enemyHitShake_[i]     = false;
+        enemyHitShakeMs_[i]   = 0;
+    }
+    for (int i = 0; i < kNHeroes; ++i) {
+        heroShake_[i]   = false;
+        heroShakeMs_[i] = 0;
     }
 
     // Start the stripe-wipe animation when battle begins
@@ -425,8 +437,10 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                 BattleChar::toStr(dmg, strtemp_, static_cast<int>(sizeof(strtemp_)));
                 enemySprites_[eneActual_].animacion = 1;
                 heroSprites_[proActual_].animacion  = 1;
-                // If killing blow, arm the pre-death shake (timer starts when
-                // the hit animation ends — marked by Ms == 0)
+                // Arm enemy hit shake immediately
+                enemyHitShake_[eneActual_]   = true;
+                enemyHitShakeMs_[eneActual_] = nowMs;
+                // If killing blow, arm the pre-death shake
                 if (enemies_[eneActual_].vivo == 0) {
                     enemyDeathShake_[eneActual_]   = true;
                     enemyDeathShakeMs_[eneActual_] = 0;
@@ -493,6 +507,10 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                 BattleChar::toStr(dmg, strtemp_, static_cast<int>(sizeof(strtemp_)));
                 heroSprites_[proActual_].animacion  = 1;
                 enemySprites_[eneActual_].animacion = 1;
+                // Arm hero shake — start immediately so offset is visible
+                // as soon as the enemy sprite moves toward the hero
+                heroShake_[proActual_]   = true;
+                heroShakeMs_[proActual_] = nowMs;
                 control2_ = 4;
                 reloj2_   = true;
                 break;
@@ -542,9 +560,17 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
 
     // 3. Attack-animation sprites (mirror original control1_==4 / control2_==4 drawing)
     if (turno_ == 1 && control1_ == 4 && !healFlash_) {
-        // Enemy gets hit (plays frames 0-4 one-shot)
+        // Enemy gets hit — apply shake offset during hit animation
         if (enemySprites_[eneActual_].animacion == 1) {
-            enemySprites_[eneActual_].posicionar(kEX[eneActual_], kEY[eneActual_]);
+            int shakeOff = 0;
+            if (enemyHitShake_[eneActual_] && enemyHitShakeMs_[eneActual_] != 0) {
+                const float el =
+                    static_cast<float>(nowMs - enemyHitShakeMs_[eneActual_]) / 1000.f;
+                if (el < 1.0f)
+                    shakeOff = static_cast<int>(
+                        std::sin(el * 50.f) * 4.f * (1.f - el));
+            }
+            enemySprites_[eneActual_].posicionar(kEX[eneActual_] + shakeOff, kEY[eneActual_]);
             enemySprites_[eneActual_].animar(0, 4, 0, nowMs, g);
         }
         // Hero attacks (moves toward enemy, plays frames 2-4 one-shot)
@@ -557,9 +583,17 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
         showHit(strtemp_, enemySprites_[eneActual_], f, g);
 
     } else if (turno_ == 0 && control2_ == 4) {
-        // Hero gets hit (plays frames 5-7 one-shot)
+        // Hero gets hit (plays frames 5-7 one-shot) — apply shake offset
         if (heroSprites_[proActual_].animacion == 1) {
-            heroSprites_[proActual_].posicionar(kHX[proActual_], kHY[proActual_]);
+            int shakeOff = 0;
+            if (heroShake_[proActual_] && heroShakeMs_[proActual_] != 0) {
+                const float el =
+                    static_cast<float>(nowMs - heroShakeMs_[proActual_]) / 1000.f;
+                if (el < 1.0f)
+                    shakeOff = static_cast<int>(
+                        std::sin(el * 50.f) * 4.f * (1.f - el));
+            }
+            heroSprites_[proActual_].posicionar(kHX[proActual_] + shakeOff, kHY[proActual_]);
             heroSprites_[proActual_].animar(5, 7, 0, nowMs, g);
         }
         // Enemy attacks (moves toward hero position, plays frames 5-6 one-shot)
@@ -686,7 +720,18 @@ void BattleMode::drawEnemiesIdle(GraphCompat &g, std::uint32_t nowMs) {
     for (int i = kNEnemies - 1; i >= 0; --i) {
         if (enemies_[i].vivo == 1) {
             if (enemySprites_[i].animacion == 0) {
-                enemySprites_[i].posicionar(kEX[i], kEY[i]);
+                // Apply hit shake offset if active
+                int shakeOff = 0;
+                if (enemyHitShake_[i] && enemyHitShakeMs_[i] != 0) {
+                    const float el =
+                        static_cast<float>(nowMs - enemyHitShakeMs_[i]) / 1000.f;
+                    if (el < 1.0f)
+                        shakeOff = static_cast<int>(
+                            std::sin(el * 50.f) * 4.f * (1.f - el));
+                    else
+                        enemyHitShake_[i] = false;
+                }
+                enemySprites_[i].posicionar(kEX[i] + shakeOff, kEY[i]);
 
                 // Snapshot overlay before drawing so we can tint only sprite pixels
                 const bool lowHp = (enemies_[i].hp < 50);
@@ -814,8 +859,21 @@ void BattleMode::drawEnemiesIdle(GraphCompat &g, std::uint32_t nowMs) {
 void BattleMode::drawHeroesIdle(GraphCompat &g, std::uint32_t nowMs) {
     for (int i = 0; i < kNHeroes; ++i) {
         if (heroes_[i].vivo == 1 && heroSprites_[i].animacion == 0) {
-            heroSprites_[i].posicionar(kHX[i], kHY[i]);
-            heroSprites_[i].dibujart(0, 2, 0, nowMs, g); // idle loop frames 0–2
+            if (heroShake_[i] && heroShakeMs_[i] != 0) {
+                const float elapsed =
+                    static_cast<float>(nowMs - heroShakeMs_[i]) / 1000.f;
+                if (elapsed < 1.0f) {
+                    const int shakeOff = static_cast<int>(
+                        std::sin(elapsed * 50.f) * 4.f * (1.f - elapsed));
+                    heroSprites_[i].posicionar(kHX[i] + shakeOff, kHY[i]);
+                } else {
+                    heroShake_[i] = false;
+                    heroSprites_[i].posicionar(kHX[i], kHY[i]);
+                }
+            } else {
+                heroSprites_[i].posicionar(kHX[i], kHY[i]);
+            }
+            heroSprites_[i].dibujart(0, 2, 0, nowMs, g);
         }
     }
 }

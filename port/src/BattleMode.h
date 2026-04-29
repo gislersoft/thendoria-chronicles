@@ -118,7 +118,15 @@ private:
 
     // ---- Enemy pre-death shake + red fade (plays for 1 s after kill) ----
     bool          enemyDeathShake_[kNEnemies];
-    std::uint32_t enemyDeathShakeMs_[kNEnemies]; // 0 = waiting for hit-anim to end
+    std::uint32_t enemyDeathShakeMs_[kNEnemies];
+
+    // ---- Enemy hit shake (plays for 1 s each time an enemy is struck) ----
+    bool          enemyHitShake_[kNEnemies];
+    std::uint32_t enemyHitShakeMs_[kNEnemies];
+
+    // ---- Hero damage shake (plays for 1 s after receiving a hit) ----
+    bool          heroShake_[kNHeroes];
+    std::uint32_t heroShakeMs_[kNHeroes];
 
 
 
