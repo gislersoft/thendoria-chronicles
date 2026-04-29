@@ -151,6 +151,10 @@ BattleMode::BattleMode() : rng_(std::random_device{}()) {
     stripeStartMs_  = 0;
     healFlash_        = false;
     healFlashStartMs_ = 0;
+    for (int i = 0; i < kNEnemies; ++i) {
+        enemyDeathShake_[i]   = false;
+        enemyDeathShakeMs_[i] = 0;
+    }
 }
 
 bool BattleMode::load() {
@@ -276,6 +280,10 @@ void BattleMode::reset() {
 
     healFlash_        = false;
     healFlashStartMs_ = 0;
+    for (int i = 0; i < kNEnemies; ++i) {
+        enemyDeathShake_[i]   = false;
+        enemyDeathShakeMs_[i] = 0;
+    }
 
     // Start the stripe-wipe animation when battle begins
     stripeActive_  = true;
@@ -417,6 +425,12 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                 BattleChar::toStr(dmg, strtemp_, static_cast<int>(sizeof(strtemp_)));
                 enemySprites_[eneActual_].animacion = 1;
                 heroSprites_[proActual_].animacion  = 1;
+                // If killing blow, arm the pre-death shake (timer starts when
+                // the hit animation ends — marked by Ms == 0)
+                if (enemies_[eneActual_].vivo == 0) {
+                    enemyDeathShake_[eneActual_]   = true;
+                    enemyDeathShakeMs_[eneActual_] = 0;
+                }
                 control1_ = 4;
                 op_       = 5; // hide menu during animation
                 reloj2_   = true;
@@ -673,13 +687,125 @@ void BattleMode::drawEnemiesIdle(GraphCompat &g, std::uint32_t nowMs) {
         if (enemies_[i].vivo == 1) {
             if (enemySprites_[i].animacion == 0) {
                 enemySprites_[i].posicionar(kEX[i], kEY[i]);
+
+                // Snapshot overlay before drawing so we can tint only sprite pixels
+                const bool lowHp = (enemies_[i].hp < 50);
+                const bool redFlash = lowHp && ((nowMs / 250) % 2 == 0);
+                std::vector<std::uint32_t> snap;
+                int bx1 = 0, by1 = 0, bx2 = 0, by2 = 0, bw = 0;
+                if (redFlash) {
+                    std::uint32_t *ov = g.getOverlay();
+                    bx1 = std::max(0, enemySprites_[i].x1);
+                    by1 = std::max(0, enemySprites_[i].y1);
+                    bx2 = std::min(319, enemySprites_[i].x2);
+                    by2 = std::min(199, enemySprites_[i].y2);
+                    bw  = bx2 - bx1 + 1;
+                    const int bh = by2 - by1 + 1;
+                    snap.resize(static_cast<std::size_t>(bw * bh));
+                    for (int py = by1; py <= by2; ++py)
+                        for (int px = bx1; px <= bx2; ++px)
+                            snap[static_cast<std::size_t>((py - by1) * bw + (px - bx1))]
+                                = ov[py * 320 + px];
+                }
+
                 enemySprites_[i].dibujart(0, 3, 0, nowMs, g); // idle loop frames 0–3
+
+                if (redFlash && !snap.empty()) {
+                    std::uint32_t *ov = g.getOverlay();
+                    for (int py = by1; py <= by2; ++py) {
+                        for (int px = bx1; px <= bx2; ++px) {
+                            std::uint32_t &pixel = ov[py * 320 + px];
+                            const std::uint32_t sv = snap[static_cast<std::size_t>(
+                                (py - by1) * bw + (px - bx1))];
+                            if (pixel == sv) continue; // background — skip
+                            const std::uint32_t r  = (pixel >> 16) & 0xFFu;
+                            const std::uint32_t gv = (pixel >>  8) & 0xFFu;
+                            const std::uint32_t b  =  pixel        & 0xFFu;
+                            pixel = 0xFF000000u
+                                  | (std::min(255u, r + 120u) << 16)
+                                  | ((gv * 3u / 10u) << 8)
+                                  | (b * 3u / 10u);
+                        }
+                    }
+                }
             }
         } else {
-            // Play death animation (one-shot, frames 0–4); nothing drawn after it ends
-            if (enemySprites_[i].animacion == 1) {
-                enemySprites_[i].posicionar(kEX[i], kEY[i]);
-                enemySprites_[i].animar(0, 4, 0, nowMs, g);
+            // Dead enemy — pre-death shake+tint, then death animation
+            if (enemyDeathShake_[i]) {
+                if (enemySprites_[i].animacion == 1) {
+                    // Hit animation still playing in the attack block — skip here
+                } else {
+                    // Hit animation ended: arm the shake timer on the first frame
+                    if (enemyDeathShakeMs_[i] == 0) enemyDeathShakeMs_[i] = nowMs;
+
+                    const float elapsed =
+                        static_cast<float>(nowMs - enemyDeathShakeMs_[i]) / 1000.f;
+
+                    if (elapsed < 1.0f) {
+                        // Decaying horizontal oscillation
+                        const int shakeOff = static_cast<int>(
+                            std::sin(elapsed * 45.f) * 4.f * (1.f - elapsed));
+                        enemySprites_[i].posicionar(kEX[i] + shakeOff, kEY[i]);
+
+                        // Snapshot overlay region before drawing
+                        std::uint32_t *ov = g.getOverlay();
+                        const int bx1 = std::max(0, enemySprites_[i].x1);
+                        const int by1 = std::max(0, enemySprites_[i].y1);
+                        const int bx2 = std::min(319, enemySprites_[i].x2);
+                        const int by2 = std::min(199, enemySprites_[i].y2);
+                        const int bw  = bx2 - bx1 + 1;
+                        const int bh  = by2 - by1 + 1;
+                        std::vector<std::uint32_t> snap(
+                            static_cast<std::size_t>(bw * bh));
+                        for (int py = by1; py <= by2; ++py)
+                            for (int px = bx1; px <= bx2; ++px)
+                                snap[static_cast<std::size_t>(
+                                    (py - by1) * bw + (px - bx1))]
+                                    = ov[py * 320 + px];
+
+                        // Draw idle frame at shaken position
+                        enemySprites_[i].dibujart(0, 3, 0, nowMs, g);
+
+                        // Tint sprite pixels red, then interpolate toward the
+                        // background (snap) so the sprite dissolves by elapsed=1
+                        for (int py = by1; py <= by2; ++py) {
+                            for (int px = bx1; px <= bx2; ++px) {
+                                std::uint32_t &pixel = ov[py * 320 + px];
+                                const std::uint32_t sv = snap[static_cast<std::size_t>(
+                                    (py - by1) * bw + (px - bx1))];
+                                if (pixel == sv) continue; // background — skip
+                                const std::uint32_t r  = (pixel >> 16) & 0xFFu;
+                                const std::uint32_t gv = (pixel >>  8) & 0xFFu;
+                                const std::uint32_t b  =  pixel        & 0xFFu;
+                                // Red-tinted version of the sprite pixel
+                                const std::uint32_t tr = std::min(255u, r + 110u);
+                                const std::uint32_t tg = gv * 3u / 10u;
+                                const std::uint32_t tb = b  * 3u / 10u;
+                                // Background pixel (what was behind the sprite)
+                                const std::uint32_t bkR = (sv >> 16) & 0xFFu;
+                                const std::uint32_t bkG = (sv >>  8) & 0xFFu;
+                                const std::uint32_t bkB =  sv        & 0xFFu;
+                                // Lerp: elapsed=0 → full red sprite; elapsed=1 → background
+                                const std::uint32_t fr = static_cast<std::uint32_t>(
+                                    static_cast<float>(tr) * (1.f - elapsed) + static_cast<float>(bkR) * elapsed);
+                                const std::uint32_t fg = static_cast<std::uint32_t>(
+                                    static_cast<float>(tg) * (1.f - elapsed) + static_cast<float>(bkG) * elapsed);
+                                const std::uint32_t fb = static_cast<std::uint32_t>(
+                                    static_cast<float>(tb) * (1.f - elapsed) + static_cast<float>(bkB) * elapsed);
+                                pixel = 0xFF000000u | (fr << 16) | (fg << 8) | fb;
+                            }
+                        }
+                    } else {
+                        // Shake finished — sprite disappears
+                        enemyDeathShake_[i] = false;
+                    }
+                }
+            } else {
+                // Play death animation (one-shot, frames 0–4); nothing drawn after it ends
+                if (enemySprites_[i].animacion == 1) {
+                    enemySprites_[i].posicionar(kEX[i], kEY[i]);
+                    enemySprites_[i].animar(0, 4, 0, nowMs, g);
+                }
             }
         }
     }

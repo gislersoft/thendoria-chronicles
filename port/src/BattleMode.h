@@ -116,6 +116,10 @@ private:
     bool          healFlash_;        // true while hero is flashing green
     std::uint32_t healFlashStartMs_; // timestamp when heal flash began
 
+    // ---- Enemy pre-death shake + red fade (plays for 1 s after kill) ----
+    bool          enemyDeathShake_[kNEnemies];
+    std::uint32_t enemyDeathShakeMs_[kNEnemies]; // 0 = waiting for hit-anim to end
+
 
 
     // Screen-space anchor positions for each sprite
