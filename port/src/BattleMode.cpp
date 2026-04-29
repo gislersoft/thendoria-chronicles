@@ -808,8 +808,8 @@ void BattleMode::drawEnemiesIdle(GraphCompat &g, std::uint32_t nowMs) {
                                     (py - by1) * bw + (px - bx1))]
                                     = ov[py * 320 + px];
 
-                        // Draw idle frame at shaken position
-                        enemySprites_[i].dibujart(0, 3, 0, nowMs, g);
+                        // Draw static frame 4 (hit frame) while dissolving
+                        enemySprites_[i].dibujar(4, 0, g);
 
                         // Tint sprite pixels red, then interpolate toward the
                         // background (snap) so the sprite dissolves by elapsed=1
