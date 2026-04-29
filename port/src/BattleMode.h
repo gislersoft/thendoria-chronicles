@@ -69,8 +69,11 @@ private:
     static constexpr int kNHeroes  = 1;
 
     // Sprite sheets
-    SpriteCompat enemySprites_[kNEnemies]; // planta.png  — 7 frames, 60px
-    SpriteCompat heroSprites_[kNHeroes];   // prof.png    — 8 frames, 53px
+    SpriteCompat enemySprites_[kNEnemies];    // planta.png    — 7 frames, 60px
+    SpriteCompat plantaBigSprites_[kNEnemies];// plantabig.png — 7 frames, bigger
+    SpriteCompat heroSprites_[kNHeroes];      // prof.png      — 8 frames, 53px
+
+    bool enemyIsBig_[kNEnemies]; // true if this slot uses plantabig
 
     // Background (320×200 ARGB pixels — image chosen by map name)
     std::vector<std::uint32_t> bgPixels_;
@@ -160,4 +163,10 @@ private:
     bool demorar(std::uint32_t t0, float secs, std::uint32_t now) const;
     void loadBackground();
     static std::string resolvePath(const std::string &name);
+
+    // Returns the correct sprite (big or normal) for enemy slot i.
+    // animacion state is always read/written via enemySprites_[i].
+    SpriteCompat &eSprite(int i) {
+        return enemyIsBig_[i] ? plantaBigSprites_[i] : enemySprites_[i];
+    }
 };

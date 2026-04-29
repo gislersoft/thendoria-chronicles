@@ -156,6 +156,7 @@ BattleMode::BattleMode() : rng_(std::random_device{}()) {
         enemyDeathShakeMs_[i] = 0;
         enemyHitShake_[i]     = false;
         enemyHitShakeMs_[i]   = 0;
+        enemyIsBig_[i]        = false;
     }
     for (int i = 0; i < kNHeroes; ++i) {
         heroShake_[i]   = false;
@@ -180,7 +181,20 @@ bool BattleMode::load() {
             std::cerr << "BattleMode: planta.png not found — using blank enemy sprite\n";
         }
     }
-
+    // --- Big plant sprite (plantabig.png: 7 frames × 90px) ---
+    const std::string plantaBigPath = resolvePath("plantabig.png");
+    for (int i = 0; i < kNEnemies; ++i) {
+        plantaBigSprites_[i].crear(7, 60, 0.13f);
+        if (!plantaBigPath.empty()) {
+            if (plantaBigSprites_[i].cargarSpritePNG(plantaBigPath) == 1) {
+                if (i == 0) std::cout << "BattleMode: big plant sprite <- " << plantaBigPath << '\n';
+            } else {
+                std::cerr << "BattleMode: failed to load big plant sprite from " << plantaBigPath << '\n';
+            }
+        } else {
+            std::cerr << "BattleMode: plantabig.png not found \u2014 big plant will use normal sprite\n";
+        }
+    }
     // --- Hero sprite (prof.png: 8 frames × 53px) ---
     const std::string profPath = resolvePath("prof.png");
     for (int i = 0; i < kNHeroes; ++i) {
@@ -251,11 +265,20 @@ void BattleMode::loadBackground() {
 void BattleMode::reset() {
     for (int i = 0; i < kNEnemies; ++i) {
         enemies_[i].initAsEnemy();
-        enemySprites_[i].animacion = 0;
+        enemySprites_[i].animacion     = 0;
+        plantaBigSprites_[i].animacion = 0;
+        enemyIsBig_[i]                 = false;
     }
     for (int i = 0; i < kNHeroes; ++i) {
         heroes_[i].initAsHero();
         heroSprites_[i].animacion = 0;
+    }
+
+    // 40% chance to spawn a big plant in the center slot (index 1)
+    if ((rng_() % 100) < 40) {
+        enemyIsBig_[1]     = true;
+        enemies_[1].hp     = enemies_[1].hpMax = enemies_[1].hpMax * 2; // double HP
+        std::cout << "BattleMode: big plant spawned at slot 1 (HP=" << enemies_[1].hp << ")\n";
     }
 
     turno_    = 1;
@@ -436,8 +459,8 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                     heroes_[proActual_].calcAtacar(rng_), rng_);
                 BattleChar::toStr(dmg, strtemp_, static_cast<int>(sizeof(strtemp_)));
                 enemySprites_[eneActual_].animacion = 1;
+                eSprite(eneActual_).animacion       = 1;
                 heroSprites_[proActual_].animacion  = 1;
-                // Arm enemy hit shake immediately
                 enemyHitShake_[eneActual_]   = true;
                 enemyHitShakeMs_[eneActual_] = nowMs;
                 // If killing blow, arm the pre-death shake
@@ -453,8 +476,8 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
             case 4:
                 // Wait for animations + 2-second pause before advancing turn
                 if (demorar(start2Ms_, 2.f, nowMs) &&
-                    enemySprites_[eneActual_].animacion == 0 &&
-                    heroSprites_[proActual_].animacion  == 0) {
+                    eSprite(eneActual_).animacion     == 0 &&
+                    heroSprites_[proActual_].animacion == 0) {
                     healFlash_ = false;
                     ++proActual_;
                     op_ = 1;
@@ -504,9 +527,11 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                 // Calculate enemy attack on current hero
                 int dmg = heroes_[proActual_].calcDefender(
                     enemies_[eneActual_].calcAtacar(rng_), rng_);
+                if (enemyIsBig_[eneActual_]) dmg *= 2;
                 BattleChar::toStr(dmg, strtemp_, static_cast<int>(sizeof(strtemp_)));
-                heroSprites_[proActual_].animacion  = 1;
                 enemySprites_[eneActual_].animacion = 1;
+                eSprite(eneActual_).animacion       = 1;
+                heroSprites_[proActual_].animacion  = 1;
                 // Arm hero shake — start immediately so offset is visible
                 // as soon as the enemy sprite moves toward the hero
                 heroShake_[proActual_]   = true;
@@ -517,8 +542,8 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
             }
             case 4:
                 if (demorar(start2Ms_, 2.f, nowMs) &&
-                    heroSprites_[proActual_].animacion  == 0 &&
-                    enemySprites_[eneActual_].animacion == 0) {
+                    heroSprites_[proActual_].animacion == 0 &&
+                    eSprite(eneActual_).animacion      == 0) {
                     ++eneActual_;
                     if (eneActual_ >= kNEnemies) {
                         eneActual_  = 0;
@@ -561,7 +586,7 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
     // 3. Attack-animation sprites (mirror original control1_==4 / control2_==4 drawing)
     if (turno_ == 1 && control1_ == 4 && !healFlash_) {
         // Enemy gets hit — apply shake offset during hit animation
-        if (enemySprites_[eneActual_].animacion == 1) {
+        if (eSprite(eneActual_).animacion == 1) {
             int shakeOff = 0;
             if (enemyHitShake_[eneActual_] && enemyHitShakeMs_[eneActual_] != 0) {
                 const float el =
@@ -570,8 +595,8 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
                     shakeOff = static_cast<int>(
                         std::sin(el * 50.f) * 4.f * (1.f - el));
             }
-            enemySprites_[eneActual_].posicionar(kEX[eneActual_] + shakeOff, kEY[eneActual_]);
-            enemySprites_[eneActual_].animar(0, 4, 0, nowMs, g);
+            eSprite(eneActual_).posicionar(kEX[eneActual_] + shakeOff, kEY[eneActual_]);
+            eSprite(eneActual_).animar(0, 4, 0, nowMs, g);
         }
         // Hero attacks (moves toward enemy, plays frames 2-4 one-shot)
         if (heroSprites_[proActual_].animacion == 1) {
@@ -580,7 +605,7 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
                 kEY[eneActual_] + 5);
             heroSprites_[proActual_].animar(2, 4, 0, nowMs, g);
         }
-        showHit(strtemp_, enemySprites_[eneActual_], f, g);
+        showHit(strtemp_, eSprite(eneActual_), f, g);
 
     } else if (turno_ == 0 && control2_ == 4) {
         // Hero gets hit (plays frames 5-7 one-shot) — apply shake offset
@@ -597,11 +622,11 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
             heroSprites_[proActual_].animar(5, 7, 0, nowMs, g);
         }
         // Enemy attacks (moves toward hero position, plays frames 5-6 one-shot)
-        if (enemySprites_[eneActual_].animacion == 1) {
-            enemySprites_[eneActual_].posicionar(
+        if (eSprite(eneActual_).animacion == 1) {
+            eSprite(eneActual_).posicionar(
                 kHX[proActual_] - 20,
                 kHY[proActual_] -  5);
-            enemySprites_[eneActual_].animar(5, 6, 0, nowMs, g);
+            eSprite(eneActual_).animar(5, 6, 0, nowMs, g);
         }
         showHit(strtemp_, heroSprites_[proActual_], f, g, 46); // yellow — hero takes damage
     }
@@ -611,8 +636,8 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
 
     // 5. Selection marker around target enemy
     if (selEnemigo_) {
-        enemySprites_[eneActual_].posicionar(kEX[eneActual_], kEY[eneActual_]);
-        markSprite(enemySprites_[eneActual_],
+        eSprite(eneActual_).posicionar(kEX[eneActual_], kEY[eneActual_]);
+        markSprite(eSprite(eneActual_),
                    enemies_[eneActual_].vivo == 1 ? 157 : 69, g);
     }
 
@@ -719,7 +744,7 @@ void BattleMode::drawEnemiesIdle(GraphCompat &g, std::uint32_t nowMs) {
     // Draw from back (index 2) to front (index 0) for correct Z-order
     for (int i = kNEnemies - 1; i >= 0; --i) {
         if (enemies_[i].vivo == 1) {
-            if (enemySprites_[i].animacion == 0) {
+            if (eSprite(i).animacion == 0) {
                 // Apply hit shake offset if active
                 int shakeOff = 0;
                 if (enemyHitShake_[i] && enemyHitShakeMs_[i] != 0) {
@@ -731,7 +756,7 @@ void BattleMode::drawEnemiesIdle(GraphCompat &g, std::uint32_t nowMs) {
                     else
                         enemyHitShake_[i] = false;
                 }
-                enemySprites_[i].posicionar(kEX[i] + shakeOff, kEY[i]);
+                eSprite(i).posicionar(kEX[i] + shakeOff, kEY[i]);
 
                 // Snapshot overlay before drawing so we can tint only sprite pixels
                 const bool lowHp = (enemies_[i].hp < 50);
@@ -740,10 +765,10 @@ void BattleMode::drawEnemiesIdle(GraphCompat &g, std::uint32_t nowMs) {
                 int bx1 = 0, by1 = 0, bx2 = 0, by2 = 0, bw = 0;
                 if (redFlash) {
                     std::uint32_t *ov = g.getOverlay();
-                    bx1 = std::max(0, enemySprites_[i].x1);
-                    by1 = std::max(0, enemySprites_[i].y1);
-                    bx2 = std::min(319, enemySprites_[i].x2);
-                    by2 = std::min(199, enemySprites_[i].y2);
+                    bx1 = std::max(0, eSprite(i).x1);
+                    by1 = std::max(0, eSprite(i).y1);
+                    bx2 = std::min(319, eSprite(i).x2);
+                    by2 = std::min(199, eSprite(i).y2);
                     bw  = bx2 - bx1 + 1;
                     const int bh = by2 - by1 + 1;
                     snap.resize(static_cast<std::size_t>(bw * bh));
@@ -753,7 +778,7 @@ void BattleMode::drawEnemiesIdle(GraphCompat &g, std::uint32_t nowMs) {
                                 = ov[py * 320 + px];
                 }
 
-                enemySprites_[i].dibujart(0, 3, 0, nowMs, g); // idle loop frames 0–3
+                eSprite(i).dibujart(0, 3, 0, nowMs, g); // idle loop frames 0–3
 
                 if (redFlash && !snap.empty()) {
                     std::uint32_t *ov = g.getOverlay();
@@ -777,9 +802,8 @@ void BattleMode::drawEnemiesIdle(GraphCompat &g, std::uint32_t nowMs) {
         } else {
             // Dead enemy — pre-death shake+tint, then death animation
             if (enemyDeathShake_[i]) {
-                if (enemySprites_[i].animacion == 1) {
+                if (eSprite(i).animacion == 1) {
                     // Hit animation still playing in the attack block — skip here
-                } else {
                     // Hit animation ended: arm the shake timer on the first frame
                     if (enemyDeathShakeMs_[i] == 0) enemyDeathShakeMs_[i] = nowMs;
 
@@ -790,14 +814,14 @@ void BattleMode::drawEnemiesIdle(GraphCompat &g, std::uint32_t nowMs) {
                         // Decaying horizontal oscillation
                         const int shakeOff = static_cast<int>(
                             std::sin(elapsed * 45.f) * 4.f * (1.f - elapsed));
-                        enemySprites_[i].posicionar(kEX[i] + shakeOff, kEY[i]);
+                        eSprite(i).posicionar(kEX[i] + shakeOff, kEY[i]);
 
                         // Snapshot overlay region before drawing
                         std::uint32_t *ov = g.getOverlay();
-                        const int bx1 = std::max(0, enemySprites_[i].x1);
-                        const int by1 = std::max(0, enemySprites_[i].y1);
-                        const int bx2 = std::min(319, enemySprites_[i].x2);
-                        const int by2 = std::min(199, enemySprites_[i].y2);
+                        const int bx1 = std::max(0, eSprite(i).x1);
+                        const int by1 = std::max(0, eSprite(i).y1);
+                        const int bx2 = std::min(319, eSprite(i).x2);
+                        const int by2 = std::min(199, eSprite(i).y2);
                         const int bw  = bx2 - bx1 + 1;
                         const int bh  = by2 - by1 + 1;
                         std::vector<std::uint32_t> snap(
@@ -809,7 +833,7 @@ void BattleMode::drawEnemiesIdle(GraphCompat &g, std::uint32_t nowMs) {
                                     = ov[py * 320 + px];
 
                         // Draw static frame 4 (hit frame) while dissolving
-                        enemySprites_[i].dibujar(4, 0, g);
+                        eSprite(i).dibujar(4, 0, g);
 
                         // Tint sprite pixels red, then interpolate toward the
                         // background (snap) so the sprite dissolves by elapsed=1
@@ -847,9 +871,9 @@ void BattleMode::drawEnemiesIdle(GraphCompat &g, std::uint32_t nowMs) {
                 }
             } else {
                 // Play death animation (one-shot, frames 0–4); nothing drawn after it ends
-                if (enemySprites_[i].animacion == 1) {
-                    enemySprites_[i].posicionar(kEX[i], kEY[i]);
-                    enemySprites_[i].animar(0, 4, 0, nowMs, g);
+                if (eSprite(i).animacion == 1) {
+                    eSprite(i).posicionar(kEX[i], kEY[i]);
+                    eSprite(i).animar(0, 4, 0, nowMs, g);
                 }
             }
         }
