@@ -12,10 +12,12 @@
 // ---------------------------------------------------------------------------
 // Screen-space anchor positions (pixels on 320×200 canvas)
 // Enemy index 0 = nearest (front-left), 2 = farthest (back-right)
-// Drawing order in drawEnemiesIdle: 2 → 1 → 0 (back to front, as original)
+// Drawing order in drawEnemiesIdle: sorted by Y ascending (back to front): 2,5,1,4,0,3
+// Row 0 (original): slots 0,1,2
+// Row 1 (new, +60x/+20y from row 0): slots 3,4,5
 // ---------------------------------------------------------------------------
-const int BattleMode::kEX[BattleMode::kNEnemies] = { 70, 110, 150 };
-const int BattleMode::kEY[BattleMode::kNEnemies] = { 80,  50,  20 };
+const int BattleMode::kEX[BattleMode::kNEnemies] = {  70, 110, 150, 130, 170, 210 };
+const int BattleMode::kEY[BattleMode::kNEnemies] = {  80,  50,  20, 100,  70,  40 };
 const int BattleMode::kHX[BattleMode::kNHeroes]  = { 210 };
 const int BattleMode::kHY[BattleMode::kNHeroes]  = { 100 };
 
@@ -583,9 +585,21 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
     // 2. Blit background to RGBA overlay
     drawBg(g);
 
-    // 3. Attack-animation sprites (mirror original control1_==4 / control2_==4 drawing)
+    // 3. Idle enemies always drawn first (back layer).
+    //    drawEnemiesIdle skips any enemy with animacion==1 (currently animating).
+    drawEnemiesIdle(g, nowMs);
+
+    // 4. Selection marker around target enemy (on top of idle enemies, under heroes)
+    if (selEnemigo_) {
+        eSprite(eneActual_).posicionar(kEX[eneActual_], kEY[eneActual_]);
+        markSprite(eSprite(eneActual_),
+                   enemies_[eneActual_].vivo == 1 ? 157 : 69, g);
+    }
+
+    // 5. Attack animations — order chosen to keep hero on top
     if (turno_ == 1 && control1_ == 4 && !healFlash_) {
-        // Enemy gets hit — apply shake offset during hit animation
+        // PLAYER ATTACKS:
+        // a) Enemy hit at its position (behind hero)
         if (eSprite(eneActual_).animacion == 1) {
             int shakeOff = 0;
             if (enemyHitShake_[eneActual_] && enemyHitShakeMs_[eneActual_] != 0) {
@@ -598,7 +612,9 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
             eSprite(eneActual_).posicionar(kEX[eneActual_] + shakeOff, kEY[eneActual_]);
             eSprite(eneActual_).animar(0, 4, 0, nowMs, g);
         }
-        // Hero attacks (moves toward enemy, plays frames 2-4 one-shot)
+        // b) Idle heroes (none animating during player attack, but keep consistent)
+        drawHeroesIdle(g, nowMs);
+        // c) Hero attacks toward enemy — drawn last (on top of everything)
         if (heroSprites_[proActual_].animacion == 1) {
             heroSprites_[proActual_].posicionar(
                 kEX[eneActual_] + 5,
@@ -608,7 +624,17 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
         showHit(strtemp_, eSprite(eneActual_), f, g);
 
     } else if (turno_ == 0 && control2_ == 4) {
-        // Hero gets hit (plays frames 5-7 one-shot) — apply shake offset
+        // ENEMY ATTACKS:
+        // a) Idle heroes drawn first (hurt hero has animacion==1, skipped by drawHeroesIdle)
+        drawHeroesIdle(g, nowMs);
+        // b) Enemy moves toward hero — second to last
+        if (eSprite(eneActual_).animacion == 1) {
+            eSprite(eneActual_).posicionar(
+                kHX[proActual_] - 20,
+                kHY[proActual_] -  5);
+            eSprite(eneActual_).animar(5, 6, 0, nowMs, g);
+        }
+        // c) Hero hurt animation — drawn last (on top)
         if (heroSprites_[proActual_].animacion == 1) {
             int shakeOff = 0;
             if (heroShake_[proActual_] && heroShakeMs_[proActual_] != 0) {
@@ -621,77 +647,55 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
             heroSprites_[proActual_].posicionar(kHX[proActual_] + shakeOff, kHY[proActual_]);
             heroSprites_[proActual_].animar(5, 7, 0, nowMs, g);
         }
-        // Enemy attacks (moves toward hero position, plays frames 5-6 one-shot)
-        if (eSprite(eneActual_).animacion == 1) {
-            eSprite(eneActual_).posicionar(
-                kHX[proActual_] - 20,
-                kHY[proActual_] -  5);
-            eSprite(eneActual_).animar(5, 6, 0, nowMs, g);
-        }
         showHit(strtemp_, heroSprites_[proActual_], f, g, 46); // yellow — hero takes damage
-    }
 
-    // 4. Draw all enemies that are NOT currently in an attack animation
-    drawEnemiesIdle(g, nowMs);
-
-    // 5. Selection marker around target enemy
-    if (selEnemigo_) {
-        eSprite(eneActual_).posicionar(kEX[eneActual_], kEY[eneActual_]);
-        markSprite(eSprite(eneActual_),
-                   enemies_[eneActual_].vivo == 1 ? 157 : 69, g);
-    }
-
-    // 6b prep — snapshot the overlay region before drawing heroes so we can
-    // tint only the sprite pixels (pixels that the sprite draw changed).
-    const bool doHealFlash = (turno_ == 1 && control1_ == 4 && healFlash_);
-    const bool flashOn     = doHealFlash && ((nowMs / 80) % 2 == 0);
-    int hfX1 = 0, hfY1 = 0, hfX2 = 0, hfY2 = 0, hfW = 0;
-    std::vector<std::uint32_t> heroPreDraw;
-    if (flashOn) {
-        heroSprites_[proActual_].posicionar(kHX[proActual_], kHY[proActual_]);
-        hfX1 = std::max(0, heroSprites_[proActual_].x1);
-        hfY1 = std::max(0, heroSprites_[proActual_].y1);
-        hfX2 = std::min(319, heroSprites_[proActual_].x2);
-        hfY2 = std::min(199, heroSprites_[proActual_].y2);
-        hfW  = hfX2 - hfX1 + 1;
-        const int hfH = hfY2 - hfY1 + 1;
-        heroPreDraw.resize(static_cast<std::size_t>(hfW * hfH));
-        const std::uint32_t *ov = g.getOverlay();
-        for (int py = hfY1; py <= hfY2; ++py)
-            for (int px = hfX1; px <= hfX2; ++px)
-                heroPreDraw[static_cast<std::size_t>((py - hfY1) * hfW + (px - hfX1))]
-                    = ov[py * 320 + px];
-    }
-
-    // 6. Draw all heroes that are NOT currently in a hurt animation
-    drawHeroesIdle(g, nowMs);
-
-    // 6b. Heal-flash feedback — tint only pixels that the sprite draw changed,
-    // so the background/transparent areas are left untouched.
-    if (doHealFlash) {
-        heroSprites_[proActual_].posicionar(kHX[proActual_], kHY[proActual_]);
-        if (flashOn && !heroPreDraw.empty()) {
-            std::uint32_t *ov = g.getOverlay();
-            for (int py = hfY1; py <= hfY2; ++py) {
-                for (int px = hfX1; px <= hfX2; ++px) {
-                    std::uint32_t &pixel = ov[py * 320 + px];
-                    const std::uint32_t saved =
-                        heroPreDraw[static_cast<std::size_t>((py - hfY1) * hfW + (px - hfX1))];
-                    if (pixel == saved) continue; // background pixel — skip
-                    const std::uint32_t r  = (pixel >> 16) & 0xFFu;
-                    const std::uint32_t gv = (pixel >>  8) & 0xFFu;
-                    const std::uint32_t b  =  pixel        & 0xFFu;
-                    pixel = 0xFF000000u
-                          | ((r  * 3u / 10u) << 16)
-                          | (std::min(255u, gv + 120u) << 8)
-                          | (b  * 3u / 10u);
+    } else {
+        // IDLE / HEAL TURN: snapshot hero region, draw idle heroes, apply heal flash
+        const bool doHealFlash = (turno_ == 1 && control1_ == 4 && healFlash_);
+        const bool flashOn     = doHealFlash && ((nowMs / 80) % 2 == 0);
+        int hfX1 = 0, hfY1 = 0, hfX2 = 0, hfY2 = 0, hfW = 0;
+        std::vector<std::uint32_t> heroPreDraw;
+        if (flashOn) {
+            heroSprites_[proActual_].posicionar(kHX[proActual_], kHY[proActual_]);
+            hfX1 = std::max(0, heroSprites_[proActual_].x1);
+            hfY1 = std::max(0, heroSprites_[proActual_].y1);
+            hfX2 = std::min(319, heroSprites_[proActual_].x2);
+            hfY2 = std::min(199, heroSprites_[proActual_].y2);
+            hfW  = hfX2 - hfX1 + 1;
+            const int hfH = hfY2 - hfY1 + 1;
+            heroPreDraw.resize(static_cast<std::size_t>(hfW * hfH));
+            const std::uint32_t *ov = g.getOverlay();
+            for (int py = hfY1; py <= hfY2; ++py)
+                for (int px = hfX1; px <= hfX2; ++px)
+                    heroPreDraw[static_cast<std::size_t>((py - hfY1) * hfW + (px - hfX1))]
+                        = ov[py * 320 + px];
+        }
+        drawHeroesIdle(g, nowMs);
+        if (doHealFlash) {
+            heroSprites_[proActual_].posicionar(kHX[proActual_], kHY[proActual_]);
+            if (flashOn && !heroPreDraw.empty()) {
+                std::uint32_t *ov = g.getOverlay();
+                for (int py = hfY1; py <= hfY2; ++py) {
+                    for (int px = hfX1; px <= hfX2; ++px) {
+                        std::uint32_t &pixel = ov[py * 320 + px];
+                        const std::uint32_t saved =
+                            heroPreDraw[static_cast<std::size_t>((py - hfY1) * hfW + (px - hfX1))];
+                        if (pixel == saved) continue;
+                        const std::uint32_t r  = (pixel >> 16) & 0xFFu;
+                        const std::uint32_t gv = (pixel >>  8) & 0xFFu;
+                        const std::uint32_t b  =  pixel        & 0xFFu;
+                        pixel = 0xFF000000u
+                              | ((r  * 3u / 10u) << 16)
+                              | (std::min(255u, gv + 120u) << 8)
+                              | (b  * 3u / 10u);
+                    }
                 }
             }
+            showHeal(strtemp_, heroSprites_[proActual_], f, g);
         }
-        showHeal(strtemp_, heroSprites_[proActual_], f, g);
     }
 
-    // 7. UI drawn on top layer (pv2)
+    // 6. UI drawn on top layer (pv2)
     drawStats(g, f, nowMs);
     drawMenu(g, f);
 }
@@ -741,8 +745,10 @@ void BattleMode::drawBg(GraphCompat &g) const {
 }
 
 void BattleMode::drawEnemiesIdle(GraphCompat &g, std::uint32_t nowMs) {
-    // Draw from back (index 2) to front (index 0) for correct Z-order
-    for (int i = kNEnemies - 1; i >= 0; --i) {
+    // Back-to-front order sorted by Y ascending: 2(y=20),5(y=40),1(y=50),4(y=70),0(y=80),3(y=100)
+    static constexpr int kDrawOrder[kNEnemies] = { 2, 5, 1, 4, 0, 3 };
+    for (int di = 0; di < kNEnemies; ++di) {
+        const int i = kDrawOrder[di];
         if (enemies_[i].vivo == 1) {
             if (eSprite(i).animacion == 0) {
                 // Apply hit shake offset if active

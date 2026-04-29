@@ -65,7 +65,7 @@ public:
     const std::vector<std::uint32_t>& getBgPixels() const { return bgPixels_; }
 
 private:
-    static constexpr int kNEnemies = 3;
+    static constexpr int kNEnemies = 6;
     static constexpr int kNHeroes  = 1;
 
     // Sprite sheets
