@@ -240,6 +240,30 @@ void FontCompat::putstr(unsigned char *dest, int x, int y, const std::string &te
     putstrWithState(dest, x, y, text, g, bg, fg, plusMode, minusMode);
 }
 
+void FontCompat::putstrScaled(unsigned char *dest, int x, int y, const std::string &text, GraphCompat &g, unsigned char bg, unsigned char fg, int scale) const {
+    if (scale <= 1) { putstr(dest, x, y, text, g, bg, fg); return; }
+    const std::string norm = normalizeText(text);
+    int cx = x;
+    for (char ch : norm) {
+        const std::uint8_t *rows = glyphRows(ch);
+        // Optional background block for the whole character cell
+        if (bg != 255) {
+            g.fillbox(dest, cx, y, cx + 5 * scale - 1, y + 7 * scale - 1, bg);
+        }
+        for (int row = 0; row < 7; ++row) {
+            for (int col = 0; col < 5; ++col) {
+                if (rows[row] & (1u << (4 - col))) {
+                    g.fillbox(dest,
+                              cx + col * scale,         y + row * scale,
+                              cx + col * scale + scale - 1, y + row * scale + scale - 1,
+                              fg);
+                }
+            }
+        }
+        cx += 6 * scale;
+    }
+}
+
 void FontCompat::putstrTexturedWithState(unsigned char *dest, int x, int y, const std::string &text, GraphCompat &g, unsigned char bg, int textureId,
                                          bool &plusMode, bool &minusMode) const {
     const std::string norm = normalizeText(text);

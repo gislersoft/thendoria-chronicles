@@ -8,6 +8,7 @@ class FontCompat {
 public:
     // Similar shape to original putstr usage: background + foreground colors.
     void putstr(unsigned char *dest, int x, int y, const std::string &text, GraphCompat &g, unsigned char bg, unsigned char fg) const;
+    void putstrScaled(unsigned char *dest, int x, int y, const std::string &text, GraphCompat &g, unsigned char bg, unsigned char fg, int scale) const;
     void putstrTextured(unsigned char *dest, int x, int y, const std::string &text, GraphCompat &g, unsigned char bg, int textureId) const;
     void putstrWithState(unsigned char *dest, int x, int y, const std::string &text, GraphCompat &g, unsigned char bg, unsigned char fg,
                          bool &plusMode, bool &minusMode) const;

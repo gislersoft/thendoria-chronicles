@@ -120,6 +120,10 @@ private:
     bool          healFlash_;        // true while hero is flashing green
     std::uint32_t healFlashStartMs_; // timestamp when heal flash began
 
+    // ---- Victory screen (all enemies dead) ----
+    bool          victoryActive_;    // true once all enemies are dead
+    std::uint32_t victoryStartMs_;   // timestamp when victory screen began
+
     // ---- Enemy pre-death shake + red fade (plays for 1 s after kill) ----
     bool          enemyDeathShake_[kNEnemies];
     std::uint32_t enemyDeathShakeMs_[kNEnemies];

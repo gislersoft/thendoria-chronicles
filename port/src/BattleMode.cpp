@@ -153,6 +153,8 @@ BattleMode::BattleMode() : rng_(std::random_device{}()) {
     stripeStartMs_  = 0;
     healFlash_        = false;
     healFlashStartMs_ = 0;
+    victoryActive_    = false;
+    victoryStartMs_   = 0;
     for (int i = 0; i < kNEnemies; ++i) {
         enemyDeathShake_[i]   = false;
         enemyDeathShakeMs_[i] = 0;
@@ -330,6 +332,8 @@ void BattleMode::reset() {
 
     healFlash_        = false;
     healFlashStartMs_ = 0;
+    victoryActive_    = false;
+    victoryStartMs_   = 0;
     for (int i = 0; i < kNEnemies; ++i) {
         enemyDeathShake_[i]   = false;
         enemyDeathShakeMs_[i] = 0;
@@ -359,6 +363,14 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
     }
     prevE_ = pressE;
     if (wantsExit_) return;
+
+    // --- Victory: auto-exit after 2 seconds ---
+    if (victoryActive_) {
+        if (victoryStartMs_ != 0 && (nowMs - victoryStartMs_) >= 2000) {
+            wantsExit_ = true;
+        }
+        return; // suppress all other input during victory
+    }
 
     // Suppress battle input while the stripe-wipe is playing
     if (stripeActive_) return;
@@ -512,6 +524,16 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                     eSprite(eneActual_).animacion     == 0 &&
                     heroSprites_[proActual_].animacion == 0) {
                     healFlash_ = false;
+                    // Check all enemies dead
+                    bool allDead = true;
+                    for (int i = 0; i < kNEnemies; ++i)
+                        if (enemies_[i].vivo == 1) { allDead = false; break; }
+                    if (allDead) {
+                        victoryActive_  = true;
+                        victoryStartMs_ = nowMs;
+                        op_             = 5;
+                        break;
+                    }
                     ++proActual_;
                     op_ = 1;
                     if (proActual_ >= kNHeroes) {
@@ -570,20 +592,30 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                         eneActual_ = next;
                         control1_  = 6; // attack next
                     } else {
-                        // All enemies hit — end player turn
-                        healFlash_ = false;
-                        ++proActual_;
-                        op_ = 1;
-                        if (proActual_ >= kNHeroes) {
-                            proActual_  = 0;
-                            eneActual_  = 0;
-                            control1_   = 0;
-                            turno_      = 0;
-                            op_         = 5;
+                        // All enemies hit — check if all are dead (victory)
+                        bool allDead = true;
+                        for (int i = 0; i < kNEnemies; ++i)
+                            if (enemies_[i].vivo == 1) { allDead = false; break; }
+                        if (allDead) {
+                            victoryActive_  = true;
+                            victoryStartMs_ = nowMs;
+                            op_             = 5;
                         } else {
-                            control1_ = 0;
+                            // End player turn normally
+                            healFlash_ = false;
+                            ++proActual_;
+                            op_ = 1;
+                            if (proActual_ >= kNHeroes) {
+                                proActual_  = 0;
+                                eneActual_  = 0;
+                                control1_   = 0;
+                                turno_      = 0;
+                                op_         = 5;
+                            } else {
+                                control1_ = 0;
+                            }
+                            reloj2_ = true;
                         }
-                        reloj2_ = true;
                     }
                 }
                 break;
@@ -804,7 +836,29 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
 
     // 6. UI drawn on top layer (pv2)
     drawStats(g, f, nowMs);
-    drawMenu(g, f);
+    if (!victoryActive_) {
+        drawMenu(g, f);
+    }
+
+    // 7. Victory overlay
+    if (victoryActive_) {
+        // Stamp start time on first draw
+        if (victoryStartMs_ == 0) victoryStartMs_ = nowMs;
+
+        // Shake: horizontal offset oscillates
+        const float elapsed = static_cast<float>(nowMs - victoryStartMs_) / 1000.f;
+        const int shakeX = static_cast<int>(std::sin(elapsed * 40.f) * 3.f);
+
+        // Flash: alternate between green (color 32) and white (15) every 120 ms
+        const unsigned char vcol = ((nowMs / 120) % 2 == 0) ? 32 : 15;
+
+        // "VICTORY" scaled 3×: 7 chars × 6px × 3 = 126px wide, 7px × 3 = 21px tall
+        const int vw = 7 * 6 * 3;
+        const int vh = 7 * 3;
+        const int vx = (320 - vw) / 2 + shakeX;
+        const int vy = (200 - vh) / 2;
+        f.putstrScaled(g.pv2, vx, vy, "VICTORY", g, 0, vcol, 3);
+    }
 }
 
 // ---------------------------------------------------------------------------
