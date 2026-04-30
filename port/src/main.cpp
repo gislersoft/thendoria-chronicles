@@ -194,6 +194,7 @@ struct LaunchOptions {
     bool hasX = false;
     bool hasY = false;
     bool filterGameboy = false;
+    bool filterGrid    = false;
     bool debugMode = false;
     std::string mapName;
     int startX = 0;
@@ -279,6 +280,8 @@ LaunchOptions parseLaunchOptions(int argc, char **argv) {
         } else if (key == "filter") {
             if (toLower(value) == "gameboy") {
                 options.filterGameboy = true;
+            } else if (toLower(value) == "grid") {
+                options.filterGrid = true;
             }
         } else if (key == "debug") {
             if (toLower(value) == "true") {
@@ -590,7 +593,7 @@ int main(int argc, char **argv) {
     std::cout << " - DIALOGS/lin02:   " << (hasDialogAsset ? "OK" : "MISSING") << '\n';
     std::cout << " - IMG/intro.pcx:   " << (hasImgAsset ? "OK" : "MISSING") << '\n';
 
-    GraphCompat graph(0, renderer, launchOptions.filterGameboy);
+    GraphCompat graph(0, renderer, launchOptions.filterGameboy, launchOptions.filterGrid);
     if (graph.status() == 0) {
         std::cerr << "GraphCompat initialization failed" << '\n';
         SDL_DestroyRenderer(renderer);

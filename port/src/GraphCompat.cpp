@@ -1,13 +1,13 @@
 #include "GraphCompat.h"
 
-GraphCompat::GraphCompat(int useMaskBuffers, SDL_Renderer *renderer, bool gameboyFilter)
+GraphCompat::GraphCompat(int useMaskBuffers, SDL_Renderer *renderer, bool gameboyFilter, bool gridFilter)
     : vga(nullptr),
       pv1(nullptr),
       pv2(nullptr),
       pvm(nullptr),
       pvf(nullptr),
       useMaskBuffers_(useMaskBuffers),
-      renderer_(renderer, gameboyFilter) {
+      renderer_(renderer, gameboyFilter, gridFilter) {
     vga = renderer_.vga();
     pv1 = renderer_.pv1();
     pv2 = renderer_.pv2();

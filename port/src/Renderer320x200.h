@@ -32,7 +32,7 @@ public:
     static constexpr std::uint32_t kScanlineNum = 1u;
     static constexpr std::uint32_t kScanlineDen = 2u;
 
-    explicit Renderer320x200(SDL_Renderer *renderer, bool gameboyFilter = false);
+    explicit Renderer320x200(SDL_Renderer *renderer, bool gameboyFilter = false, bool gridFilter = false);
     ~Renderer320x200();
 
     unsigned char *vga();
@@ -77,6 +77,7 @@ private:
     std::array<std::uint32_t, 256>           palette_{};
 
     bool gameboyFilter_ = false;  // enables LCD grid + Game Boy green colour mapping
+    bool gridFilter_     = false;  // enables LCD grid only (no colour shift)
 
     void initDefaultPalette();
 };

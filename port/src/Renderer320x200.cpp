@@ -54,11 +54,11 @@ static std::uint32_t toGBGreen(std::uint32_t argb) {
     return 0xFF000000u | (gr << 16) | (gg << 8) | gb;
 }
 
-Renderer320x200::Renderer320x200(SDL_Renderer *renderer, bool gameboyFilter)
+Renderer320x200::Renderer320x200(SDL_Renderer *renderer, bool gameboyFilter, bool gridFilter)
     : renderer_(renderer), gridTexture_(nullptr), plainTexture_(nullptr),
       rgbaGrid_(kScaledPixels, 0u),
-      gameboyFilter_(gameboyFilter) {
-    if (gameboyFilter_) {
+      gameboyFilter_(gameboyFilter), gridFilter_(gridFilter) {
+    if (gameboyFilter_ || gridFilter_) {
         // Full scaled texture for LCD grid effect.
         gridTexture_ = SDL_CreateTexture(
             renderer_,
@@ -321,10 +321,13 @@ void Renderer320x200::present(const unsigned char *px, const unsigned char *top)
         if (gameboyFilter_) {
             rgbaScratch_[i] = toGBGreen(rgbaScratch_[i]);
         }
+        // gridFilter_ keeps the original colour — no mapping needed
     }
 
-    if (gameboyFilter_) {
+    if (gameboyFilter_ || gridFilter_) {
         // Step 2: Upscale into rgbaGrid_ (960×600) with LCD grid border.
+        // gameboyFilter_ uses DMG green as the grid colour; gridFilter_ uses pure black.
+        const std::uint32_t gridLineColor = gridFilter_ ? 0xFF000000u : kGridColor;
         for (int gy = 0; gy < kHeight; ++gy) {
             for (int gx = 0; gx < kWidth; ++gx) {
                 const std::uint32_t boosted = rgbaScratch_[gx + gy * kWidth];
@@ -335,7 +338,7 @@ void Renderer320x200::present(const unsigned char *px, const unsigned char *top)
                     const int rowOff = (baseY + sy) * kScaledWidth;
                     for (int sx = 0; sx < kScale; ++sx) {
                         const bool isGrid = yGrid || (sx == kScale - 1);
-                        rgbaGrid_[baseX + sx + rowOff] = isGrid ? kGridColor : boosted;
+                        rgbaGrid_[baseX + sx + rowOff] = isGrid ? gridLineColor : boosted;
                     }
                 }
             }
