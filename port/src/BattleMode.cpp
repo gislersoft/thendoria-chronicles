@@ -276,10 +276,26 @@ void BattleMode::reset() {
         heroSprites_[i].animacion = 0;
     }
 
-    // 40% chance to spawn a big plant in the center slot (index 1)
-    if ((rng_() % 100) < 40) {
-        enemyIsBig_[1]     = true;
-        enemies_[1].hp     = enemies_[1].hpMax = enemies_[1].hpMax * 2; // double HP
+    // --- Random enemy count (weighted) ---
+    // Weights: 1→2, 2→2, 3→3, 4→1, 5→1, 6→1  (total=10)
+    static constexpr int kCountWeights[kNEnemies] = { 2, 2, 3, 1, 1, 1 };
+    int total = 0;
+    for (int w : kCountWeights) total += w;
+    int roll = static_cast<int>(rng_() % static_cast<unsigned>(total));
+    int nActive = kNEnemies;
+    for (int n = 0; n < kNEnemies; ++n) {
+        roll -= kCountWeights[n];
+        if (roll < 0) { nActive = n + 1; break; }
+    }
+    // Kill slots that exceed the active count
+    for (int i = nActive; i < kNEnemies; ++i)
+        enemies_[i].vivo = 0;
+    std::cout << "BattleMode: " << nActive << " enemies spawned\n";
+
+    // plantabig: 40% chance if active count is exactly 2 or 3 (center slot = 1)
+    if (nActive > 2 && nActive <= 3 && (rng_() % 100) < 40) {
+        enemyIsBig_[1]   = true;
+        enemies_[1].hp   = enemies_[1].hpMax = enemies_[1].hpMax * 2;
         std::cout << "BattleMode: big plant spawned at slot 1 (HP=" << enemies_[1].hp << ")\n";
     }
 
@@ -288,6 +304,7 @@ void BattleMode::reset() {
     control2_ = 0;
     op_        = 1;
     eneActual_ = 0;
+    enePlayer_ = 0;
     proActual_ = 0;
     accion_    = 1;
     selOpcion_  = false;
@@ -295,7 +312,7 @@ void BattleMode::reset() {
 
     // Initialize item inventory
     itemCount_ = 1;
-    items_[0] = {"POSION", 99, 100};
+    items_[0] = {"POSION", 99, 300};
 
     startMs_  = 0;
     start2Ms_ = 0;
@@ -446,6 +463,7 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                 break;
             case 2:
                 if (enemies_[eneActual_].vivo == 1) {
+                    enePlayer_ = eneActual_; // save player's chosen target
                     if (op_ == 1) { // ATACAR
                         control1_ = 3;
                     }
@@ -485,6 +503,8 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                     op_ = 1;
                     if (proActual_ >= kNHeroes) {
                         proActual_  = 0;
+                        // Do NOT reset eneActual_ — enemy turn iterates from 0 itself.
+                        // enePlayer_ already holds the player's confirmed target.
                         eneActual_  = 0;
                         control1_   = 0;
                         turno_      = 0; // switch to enemy turn
@@ -518,10 +538,18 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                     // Skip dead enemy
                     ++eneActual_;
                     if (eneActual_ >= kNEnemies) {
-                        eneActual_ = 0;
+                        // All enemies iterated — end enemy turn, back to player
+                        // Restore player's last target; if dead advance to next alive
+                        eneActual_ = enePlayer_;
+                        for (int t = 0; t < kNEnemies; ++t) {
+                            if (enemies_[eneActual_].vivo == 1) break;
+                            eneActual_ = (eneActual_ + 1) % kNEnemies;
+                        }
+                        enePlayer_ = eneActual_;
                         proActual_ = 0;
                         control2_  = 0;
-                        turno_     = 1; // back to player
+                        turno_     = 1;
+                        op_        = 1;
                     }
                 }
                 break;
@@ -548,8 +576,14 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                     eSprite(eneActual_).animacion      == 0) {
                     ++eneActual_;
                     if (eneActual_ >= kNEnemies) {
-                        eneActual_  = 0;
                         proActual_  = 0;
+                        // Restore player's last target; if dead advance to next alive
+                        eneActual_ = enePlayer_;
+                        for (int t = 0; t < kNEnemies; ++t) {
+                            if (enemies_[eneActual_].vivo == 1) break;
+                            eneActual_ = (eneActual_ + 1) % kNEnemies;
+                        }
+                        enePlayer_  = eneActual_;
                         control2_   = 0;
                         turno_      = 1;
                         op_         = 1;

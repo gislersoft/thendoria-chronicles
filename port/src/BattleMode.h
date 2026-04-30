@@ -88,7 +88,8 @@ private:
     int control1_;           // player action phase (0–4)
     int control2_;           // enemy action phase (0–4)
     int op_;                 // main menu cursor: 1=ATACAR 2=POSION (5=hidden)
-    int eneActual_;          // current enemy index
+    int eneActual_;          // current enemy index (iterator during enemy turn)
+    int enePlayer_;          // last enemy the player selected
     int proActual_;          // current hero index
     int accion_;             // enemy's chosen action
     bool selOpcion_;         // player is choosing menu option
