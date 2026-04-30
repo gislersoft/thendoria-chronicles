@@ -194,6 +194,7 @@ struct LaunchOptions {
     bool hasX = false;
     bool hasY = false;
     bool filterGameboy = false;
+    bool debugMode = false;
     std::string mapName;
     int startX = 0;
     int startY = 0;
@@ -278,6 +279,10 @@ LaunchOptions parseLaunchOptions(int argc, char **argv) {
         } else if (key == "filter") {
             if (toLower(value) == "gameboy") {
                 options.filterGameboy = true;
+            }
+        } else if (key == "debug") {
+            if (toLower(value) == "true") {
+                options.debugMode = true;
             }
         }
     }
@@ -1390,6 +1395,22 @@ int main(int argc, char **argv) {
             }
             hero.posicionar(160, 94);
             hero.dibujar(heroFrame, 0, graph);
+
+            // Debug: yellow box + tile number overlay on the tile the hero is standing on
+            if (launchOptions.debugMode) {
+                const int hi = xpos_actual - xpos_ref + 10;
+                const int hj = ypos_actual - ypos_ref + 6;
+                const int tsx = hi * 16 + xpos_scroll;
+                const int tsy = hj * 16 + ypos_scroll;
+                graph.box(graph.pv2, tsx, tsy, tsx + 15, tsy + 15, 46); // yellow
+                const MapObject &ho = world.at(xpos_actual, ypos_actual);
+                int hActual = ho.actual;
+                if (hActual < 0 || hActual > 2) hActual = 0;
+                const int tileNum = ho.tiles[hActual];
+                char tileBuf[12] = {};
+                std::snprintf(tileBuf, sizeof(tileBuf), "T:%d", tileNum);
+                font.putstr(graph.pv2, tsx, tsy - 8, tileBuf, graph, 0, 46); // yellow text above box
+            }
         } else {
             graph.fillbox(graph.pv1, 20, 20, 299, 179, 230);
             graph.box(graph.pv1, 20, 20, 299, 179, 186);
