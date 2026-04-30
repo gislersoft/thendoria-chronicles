@@ -761,6 +761,7 @@ int main(int argc, char **argv) {
                 break;
             }
             case 1:
+            case 2:
                 world.atMutable(tx, ty).tocado = true;
                 break;
             case 3: {
