@@ -148,6 +148,9 @@ private:
     BattleItem  items_[kMaxItems];
     int         itemCount_;
 
+    // MULTIPLE skill uses remaining (starts at 3 per battle)
+    int multipleQty_;
+
     void drawBg(GraphCompat &g) const;
     void drawMenu(GraphCompat &g, FontCompat &f) const;
     void drawStats(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) const;

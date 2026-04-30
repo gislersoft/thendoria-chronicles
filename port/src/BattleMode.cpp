@@ -314,6 +314,8 @@ void BattleMode::reset() {
     itemCount_ = 1;
     items_[0] = {"POSION", 99, 300};
 
+    multipleQty_ = 3;
+
     startMs_  = 0;
     start2Ms_ = 0;
     reloj_    = true;
@@ -413,7 +415,16 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                     // and causing case 4 to fire immediately this same frame.
                     start2Ms_ = nowMs;
                     reloj2_   = false;
-                } else { // ATACAR
+                } else if (op_ == 3) { // MULTIPLE
+                    if (multipleQty_ > 0) {
+                        --multipleQty_;
+                        control1_  = 5;
+                        selOpcion_ = false;
+                        op_        = 5; // hide menu during animation
+                        start2Ms_  = nowMs;
+                        reloj2_    = false;
+                    }
+                } else { // ATACAR (op_ == 1)
                     control1_  = 1;
                     selOpcion_ = false;
                 }
@@ -445,8 +456,10 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
         if (inputOk && justUp)   { if (selOpcion_) { --op_; reloj_ = true; } }
         if (inputOk && justDown) { if (selOpcion_) { ++op_; reloj_ = true; } }
 
-        // Wrap main menu cursor (ATACAR=1, ITEM=2)
-        if (op_ < 1) op_ = 2;  if (op_ > 2) op_ = 1;
+        // Wrap main menu cursor (ATACAR=1, ITEM=2, MULTIPLE=3)
+        if (op_ < 1) op_ = 3;  if (op_ > 3) op_ = 1;
+        // Skip MULTIPLE when it is disabled (0 uses left)
+        if (op_ == 3 && multipleQty_ == 0) { op_ = justDown ? 1 : 2; }
 
         // --- Player state machine ---
         switch (control1_) {
@@ -515,6 +528,66 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                     reloj2_ = true;
                 }
                 break;
+
+            case 5: {
+                // MULTIPLE: find first alive enemy and begin attacking
+                eneActual_ = 0;
+                for (int i = 0; i < kNEnemies; ++i) {
+                    if (enemies_[i].vivo == 1) { eneActual_ = i; break; }
+                }
+                control1_ = 6;
+                break;
+            }
+            case 6: {
+                // MULTIPLE: attack eneActual_, then wait
+                int dmg = enemies_[eneActual_].calcDefender(
+                    heroes_[proActual_].calcAtacar(rng_), rng_);
+                BattleChar::toStr(dmg, strtemp_, static_cast<int>(sizeof(strtemp_)));
+                enemySprites_[eneActual_].animacion = 1;
+                eSprite(eneActual_).animacion       = 1;
+                heroSprites_[proActual_].animacion  = 1;
+                enemyHitShake_[eneActual_]   = true;
+                enemyHitShakeMs_[eneActual_] = nowMs;
+                if (enemies_[eneActual_].vivo == 0) {
+                    enemyDeathShake_[eneActual_]   = true;
+                    enemyDeathShakeMs_[eneActual_] = 0;
+                }
+                control1_ = 7;
+                reloj2_   = true;
+                break;
+            }
+            case 7: {
+                // MULTIPLE: wait for animation, then advance to next alive enemy or end turn
+                if (demorar(start2Ms_, 2.f, nowMs) &&
+                    eSprite(eneActual_).animacion     == 0 &&
+                    heroSprites_[proActual_].animacion == 0) {
+                    // Find next alive enemy after current
+                    int next = -1;
+                    for (int i = eneActual_ + 1; i < kNEnemies; ++i) {
+                        if (enemies_[i].vivo == 1) { next = i; break; }
+                    }
+                    if (next != -1) {
+                        eneActual_ = next;
+                        control1_  = 6; // attack next
+                    } else {
+                        // All enemies hit — end player turn
+                        healFlash_ = false;
+                        ++proActual_;
+                        op_ = 1;
+                        if (proActual_ >= kNHeroes) {
+                            proActual_  = 0;
+                            eneActual_  = 0;
+                            control1_   = 0;
+                            turno_      = 0;
+                            op_         = 5;
+                        } else {
+                            control1_ = 0;
+                        }
+                        reloj2_ = true;
+                    }
+                }
+                break;
+            }
         }
 
     // =========================================================
@@ -631,7 +704,7 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
     }
 
     // 5. Attack animations — order chosen to keep hero on top
-    if (turno_ == 1 && control1_ == 4 && !healFlash_) {
+    if (turno_ == 1 && (control1_ == 4 || control1_ == 7) && !healFlash_) {
         // PLAYER ATTACKS:
         // a) Enemy hit at its position (behind hero)
         if (eSprite(eneActual_).animacion == 1) {
@@ -1015,22 +1088,25 @@ void BattleMode::drawMenu(GraphCompat &g, FontCompat &f) const {
     }
 
     // op_ == 5 means menu is hidden during animation
-    const bool show = (op_ >= 1 && op_ <= 2);
+    const bool show = (op_ >= 1 && op_ <= 3);
     const unsigned char colNormal   = 15;  // white
     const unsigned char colSelected = 46;  // yellow-gold
 
-    // "MENU" label above ATACAR
-    f.putstr(g.pv2, 170, 164, "MENU", g, 0, 157); // orange
-
-    f.putstr(g.pv2, 170, 177, "ATACAR", g, 0,
+    f.putstr(g.pv2, 170, 164, "ATACAR", g, 0,
              (show && op_ == 1) ? colSelected : colNormal);
 
     // POSION with current count
     char pocionLabel[12] = {};
     const int qty = (itemCount_ > 0) ? items_[0].qty : 0;
     std::snprintf(pocionLabel, sizeof(pocionLabel), "POSION %d", qty);
-    f.putstr(g.pv2, 170, 190, pocionLabel, g, 0,
+    f.putstr(g.pv2, 170, 177, pocionLabel, g, 0,
              (show && op_ == 2) ? colSelected : colNormal);
+
+    // MULTIPLE with current count
+    char multiLabel[16] = {};
+    std::snprintf(multiLabel, sizeof(multiLabel), "MULTIPLE %d", multipleQty_);
+    f.putstr(g.pv2, 170, 190, multiLabel, g, 0,
+             multipleQty_ == 0 ? 8 : (show && op_ == 3) ? colSelected : colNormal);
 }
 
 
