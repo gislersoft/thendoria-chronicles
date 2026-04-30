@@ -1220,6 +1220,43 @@ int main(int argc, char **argv) {
                 }
 #endif
             }
+            if (battle.wantsRestart()) {
+                // Game Over — restart from intro screen
+                battleMode = false;
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+                Mix_HaltMusic();
+#endif
+                battle.reset();
+                battle.load();
+                // Full map reset — reload default CASA map
+                {
+                    const std::string casaPath = firstExistingPath({
+                        "MAPS/CASA.TXT", "../MAPS/CASA.TXT",
+                        "maps/CASA.TXT", "../maps/CASA.TXT"
+                    });
+                    if (!casaPath.empty()) {
+                        world.loadFromFile(casaPath);
+                        npcs = loadNpcsForMap(casaPath, npcRng);
+                        currentMapBaseName = std::filesystem::path(casaPath).filename().string();
+                        mapLoaded = true;
+                    }
+                }
+                // Reset player position to defaults
+                xpos_actual = 20; ypos_actual = 18;
+                xpos_ref    = xpos_actual; ypos_ref = ypos_actual;
+                xpos_scroll = 0;  ypos_scroll = 0;
+                scroll      = false;
+                // Play intro and resume explore music afterward
+                IntroScreen introRestart(launchOptions.filterGameboy);
+                introRestart.playFullIntro(graph, font, renderer, static_cast<std::uint32_t>(SDL_GetTicks()));
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+                if (exploreMusic) {
+                    if (Mix_PlayMusic(exploreMusic, -1) != 0) {
+                        std::cerr << "Mix_PlayMusic resume failed: " << Mix_GetError() << '\n';
+                    }
+                }
+#endif
+            }
             graph.wait_retrace();
             graph.volcar(graph.vga, graph.pv1);
             graph.presentLayers(graph.vga, graph.pv2);

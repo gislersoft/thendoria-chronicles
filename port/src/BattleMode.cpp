@@ -139,6 +139,7 @@ BattleMode::BattleMode() : rng_(std::random_device{}()) {
     strtemp_[4] = '\0';
     loaded_ = false;
     wantsExit_ = false;
+    wantsRestart_ = false;
     // zero-init state
     turno_ = control1_ = control2_ = 0;
     op_ = 0;
@@ -155,6 +156,8 @@ BattleMode::BattleMode() : rng_(std::random_device{}()) {
     healFlashStartMs_ = 0;
     victoryActive_    = false;
     victoryStartMs_   = 0;
+    gameOverActive_   = false;
+    gameOverStartMs_  = 0;
     for (int i = 0; i < kNEnemies; ++i) {
         enemyDeathShake_[i]   = false;
         enemyDeathShakeMs_[i] = 0;
@@ -199,10 +202,10 @@ bool BattleMode::load() {
             std::cerr << "BattleMode: plantabig.png not found \u2014 big plant will use normal sprite\n";
         }
     }
-    // --- Hero sprite (prof.png: 8 frames × 53px) ---
+    // --- Hero sprite (prof.png: 9 frames × 53px) ---
     const std::string profPath = resolvePath("prof.png");
     for (int i = 0; i < kNHeroes; ++i) {
-        heroSprites_[i].crear(8, 53, 0.2f);
+        heroSprites_[i].crear(9, 53, 0.2f);
         if (!profPath.empty()) {
             if (heroSprites_[i].cargarSpritePNG(profPath) == 1) {
                 if (i == 0) std::cout << "BattleMode: hero sprite <- " << profPath << '\n';
@@ -329,11 +332,14 @@ void BattleMode::reset() {
     prevUp_ = prevDown_ = prevLeft_ = prevRight_ = false;
     prevSpace_ = prevEnter_ = prevE_ = false;
     wantsExit_ = false;
+    wantsRestart_ = false;
 
     healFlash_        = false;
     healFlashStartMs_ = 0;
     victoryActive_    = false;
     victoryStartMs_   = 0;
+    gameOverActive_   = false;
+    gameOverStartMs_  = 0;
     for (int i = 0; i < kNEnemies; ++i) {
         enemyDeathShake_[i]   = false;
         enemyDeathShakeMs_[i] = 0;
@@ -370,6 +376,14 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
             wantsExit_ = true;
         }
         return; // suppress all other input during victory
+    }
+
+    // --- Game Over: trigger restart after 5 seconds ---
+    if (gameOverActive_) {
+        if (gameOverStartMs_ != 0 && (nowMs - gameOverStartMs_) >= 5000) {
+            wantsRestart_ = true;
+        }
+        return; // suppress all other input during game over
     }
 
     // Suppress battle input while the stripe-wipe is playing
@@ -671,6 +685,13 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
                 // as soon as the enemy sprite moves toward the hero
                 heroShake_[proActual_]   = true;
                 heroShakeMs_[proActual_] = nowMs;
+                // Detect hero death
+                if (heroes_[proActual_].vivo == 0) {
+                    heroSprites_[proActual_].animacion = 1; // keep animating until we show tombstone
+                    gameOverActive_  = true;
+                    gameOverStartMs_ = 0; // stamped on first draw
+                    op_              = 5; // hide menu
+                }
                 control2_ = 4;
                 reloj2_   = true;
                 break;
@@ -773,8 +794,12 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
                 kHY[proActual_] -  5);
             eSprite(eneActual_).animar(5, 6, 0, nowMs, g);
         }
-        // c) Hero hurt animation — drawn last (on top)
-        if (heroSprites_[proActual_].animacion == 1) {
+        // c) Hero hurt animation — OR tombstone if dead
+        if (gameOverActive_) {
+            // Hero is dead: show tombstone (frame 8) instead of hurt animation
+            heroSprites_[proActual_].posicionar(kHX[proActual_], kHY[proActual_]);
+            heroSprites_[proActual_].dibujar(8, 0, g);
+        } else if (heroSprites_[proActual_].animacion == 1) {
             int shakeOff = 0;
             if (heroShake_[proActual_] && heroShakeMs_[proActual_] != 0) {
                 const float el =
@@ -786,7 +811,8 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
             heroSprites_[proActual_].posicionar(kHX[proActual_] + shakeOff, kHY[proActual_]);
             heroSprites_[proActual_].animar(5, 7, 0, nowMs, g);
         }
-        showHit(strtemp_, heroSprites_[proActual_], f, g, 46); // yellow — hero takes damage
+        if (!gameOverActive_)
+            showHit(strtemp_, heroSprites_[proActual_], f, g, 46); // yellow — hero takes damage
 
     } else {
         // IDLE / HEAL TURN: snapshot hero region, draw idle heroes, apply heal flash
@@ -836,7 +862,7 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
 
     // 6. UI drawn on top layer (pv2)
     drawStats(g, f, nowMs);
-    if (!victoryActive_) {
+    if (!victoryActive_ && !gameOverActive_) {
         drawMenu(g, f);
     }
 
@@ -858,6 +884,28 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
         const int vx = (320 - vw) / 2 + shakeX;
         const int vy = (200 - vh) / 2;
         f.putstrScaled(g.pv2, vx, vy, "VICTORY", g, 0, vcol, 3);
+    }
+
+    // 8. Game Over overlay
+    if (gameOverActive_) {
+        // Stamp start time on first draw
+        if (gameOverStartMs_ == 0) gameOverStartMs_ = nowMs;
+
+        // Draw tombstone (frame 8) at hero position
+        heroSprites_[proActual_].posicionar(kHX[proActual_], kHY[proActual_]);
+        heroSprites_[proActual_].dibujar(8, 0, g);
+
+        // Shake + flash: red (color 69) and white (15)
+        const float goElapsed = static_cast<float>(nowMs - gameOverStartMs_) / 1000.f;
+        const int goShakeX = static_cast<int>(std::sin(goElapsed * 40.f) * 3.f);
+        const unsigned char gocol = ((nowMs / 120) % 2 == 0) ? 69 : 15;
+
+        // "GAME OVER" = 9 chars × 6px × 3 = 162px wide, 21px tall
+        const int gow = 9 * 6 * 3;
+        const int goh = 7 * 3;
+        const int gox = (320 - gow) / 2 + goShakeX;
+        const int goy = (200 - goh) / 2;
+        f.putstrScaled(g.pv2, gox, goy, "GAME OVER", g, 0, gocol, 3);
     }
 }
 

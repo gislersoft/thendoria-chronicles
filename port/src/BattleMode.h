@@ -60,6 +60,7 @@ public:
 
     // True after the player presses 'E' to leave the battle.
     bool wantsExit() const { return wantsExit_; }
+    bool wantsRestart() const { return wantsRestart_; }
 
     // Read-only access to the loaded background pixels (ARGB, 320×200).
     const std::vector<std::uint32_t>& getBgPixels() const { return bgPixels_; }
@@ -110,6 +111,7 @@ private:
 
     std::mt19937 rng_;
     bool wantsExit_;
+    bool wantsRestart_;
     bool loaded_;
 
     // ---- Battle-start stripe-wipe transition ----
@@ -123,6 +125,10 @@ private:
     // ---- Victory screen (all enemies dead) ----
     bool          victoryActive_;    // true once all enemies are dead
     std::uint32_t victoryStartMs_;   // timestamp when victory screen began
+
+    // ---- Game Over screen (hero HP reaches 0) ----
+    bool          gameOverActive_;   // true once hero is dead
+    std::uint32_t gameOverStartMs_;  // timestamp when game over screen began
 
     // ---- Enemy pre-death shake + red fade (plays for 1 s after kill) ----
     bool          enemyDeathShake_[kNEnemies];
