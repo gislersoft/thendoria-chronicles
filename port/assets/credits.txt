@@ -1,0 +1,118 @@
+CRÉDITOS
+
+DIRECCIÓN Y PRODUCCIÓN
+Director Creativo: GISLER GARCES
+
+Director de Juego: GISLER GARCES
+
+Productor Ejecutivo: GISLER GARCES
+
+Productor Asociado: GISLER GARCES
+
+Director de Operaciones: GISLER GARCES
+
+DISEÑO DE JUEGO (GAME DESIGN)
+
+Diseñador Jefe de Mecánicas: GISLER GARCES
+
+Diseño de Niveles (Level Design): GISLER GARCES
+
+Economía del Juego: GISLER GARCES
+
+Diseño de Sistemas: GISLER GARCES
+
+Narrativa y Guion: GISLER GARCES
+
+Escritura de Diálogos: GISLER GARCES
+
+DEPARTAMENTO DE ARTE
+
+Director de Arte: GISLER GARCES
+
+Artista Conceptual Principal: GISLER GARCES
+
+Modelado 3D de Personajes: GISLER GARCES
+
+Modelado de Entornos: GISLER GARCES
+
+Texturizado y Shaders: GISLER GARCES
+
+Iluminación (Lighting Artist): GISLER GARCES
+
+Director de Animación: GISLER GARCES
+
+Animación de Rigging: GISLER GARCES
+
+Efectos Visuales (VFX): GISLER GARCES
+
+PROGRAMACIÓN Y TECNOLOGÍA
+
+Director Técnico (CTO): GISLER GARCES
+
+Programador Jefe de Motor: GISLER GARCES
+
+IA (Inteligencia Artificial): GISLER GARCES
+
+Físicas y Colisiones: GISLER GARCES
+
+Programación de Gameplay: GISLER GARCES
+
+Desarrollo de Herramientas: GISLER GARCES
+
+Programación de Red y Multijugador: GISLER GARCES
+
+Optimización de Memoria: GISLER GARCES
+
+AUDIO Y MÚSICA
+
+Compositor de la Banda Sonora: GISLER GARCES
+
+Director de Sonido: GISLER GARCES
+
+Diseño de Sonido Ambiental: GISLER GARCES
+
+Foley Artist: GISLER GARCES
+
+Mezcla y Masterización: GISLER GARCES
+
+REPARTO DE VOCES (VOICE ACTING)
+
+Protagonista Masculino: GISLER GARCES
+
+Protagonista Femenina: GISLER GARCES
+
+Antagonista Principal: GISLER GARCES
+
+Voces de PNJs (Civiles): GISLER GARCES
+
+Narrador: GISLER GARCES
+
+Gritos y Sonidos de Muerte: GISLER GARCES
+
+CONTROL DE CALIDAD (QA)
+
+Líder de Testing: GISLER GARCES
+
+QA Funcional: GISLER GARCES
+
+Beta Tester Principal: GISLER GARCES
+
+Localización y Traducción: GISLER GARCES
+
+Corrección de Bugs Críticos: GISLER GARCES
+
+
+AGRADECIMIENTOS ESPECIALES
+Inspiración Creativa: GISLER GARCES
+
+Soporte Moral: GISLER GARCES
+
+Catering y Café: GISLER GARCES
+
+Agradecimiento a la Familia: GISLER GARCES
+
+Dedicado a: GISLER GARCES
+
+"Un juego creado, desarrollado, financiado y jugado por GISLER GARCES para el disfrute de GISLER GARCES."
+
+© 2026 GISLERSOFT. TODOS LOS DERECHOS RESERVADOS A GISLER GARCES.

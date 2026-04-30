@@ -150,6 +150,7 @@ BattleMode::BattleMode() : rng_(std::random_device{}()) {
     reloj_ = reloj2_ = true;
     prevUp_ = prevDown_ = prevLeft_ = prevRight_ = false;
     prevSpace_ = prevEnter_ = prevE_ = false;
+    prevAnyKey_     = false;
     stripeActive_   = false;
     stripeStartMs_  = 0;
     healFlash_        = false;
@@ -331,6 +332,7 @@ void BattleMode::reset() {
 
     prevUp_ = prevDown_ = prevLeft_ = prevRight_ = false;
     prevSpace_ = prevEnter_ = prevE_ = false;
+    prevAnyKey_   = false;
     wantsExit_ = false;
     wantsRestart_ = false;
 
@@ -370,18 +372,32 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
     prevE_ = pressE;
     if (wantsExit_) return;
 
-    // --- Victory: auto-exit after 2 seconds ---
+    // --- Victory: wait for any key press (after 500 ms grace period) ---
     if (victoryActive_) {
-        if (victoryStartMs_ != 0 && (nowMs - victoryStartMs_) >= 2000) {
-            wantsExit_ = true;
+        if (victoryStartMs_ != 0 && (nowMs - victoryStartMs_) >= 500) {
+            const bool pressAny = (keys[SDL_SCANCODE_SPACE]  != 0) ||
+                                  (keys[SDL_SCANCODE_RETURN] != 0) ||
+                                  (keys[SDL_SCANCODE_Z]      != 0) ||
+                                  (keys[SDL_SCANCODE_X]      != 0);
+            if (pressAny && !prevAnyKey_) {
+                wantsExit_ = true;
+            }
+            prevAnyKey_ = pressAny;
         }
         return; // suppress all other input during victory
     }
 
-    // --- Game Over: trigger restart after 5 seconds ---
+    // --- Game Over: wait for any key press (after 500 ms grace period) ---
     if (gameOverActive_) {
-        if (gameOverStartMs_ != 0 && (nowMs - gameOverStartMs_) >= 5000) {
-            wantsRestart_ = true;
+        if (gameOverStartMs_ != 0 && (nowMs - gameOverStartMs_) >= 500) {
+            const bool pressAny = (keys[SDL_SCANCODE_SPACE]  != 0) ||
+                                  (keys[SDL_SCANCODE_RETURN] != 0) ||
+                                  (keys[SDL_SCANCODE_Z]      != 0) ||
+                                  (keys[SDL_SCANCODE_X]      != 0);
+            if (pressAny && !prevAnyKey_) {
+                wantsRestart_ = true;
+            }
+            prevAnyKey_ = pressAny;
         }
         return; // suppress all other input during game over
     }
@@ -781,7 +797,8 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
                 kEY[eneActual_] + 5);
             heroSprites_[proActual_].animar(2, 4, 0, nowMs, g);
         }
-        showHit(strtemp_, eSprite(eneActual_), f, g);
+        if (!victoryActive_ && !gameOverActive_)
+            showHit(strtemp_, eSprite(eneActual_), f, g);
 
     } else if (turno_ == 0 && control2_ == 4) {
         // ENEMY ATTACKS:
@@ -811,7 +828,7 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
             heroSprites_[proActual_].posicionar(kHX[proActual_] + shakeOff, kHY[proActual_]);
             heroSprites_[proActual_].animar(5, 7, 0, nowMs, g);
         }
-        if (!gameOverActive_)
+        if (!gameOverActive_ && !victoryActive_)
             showHit(strtemp_, heroSprites_[proActual_], f, g, 46); // yellow — hero takes damage
 
     } else {
@@ -856,7 +873,8 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
                     }
                 }
             }
-            showHeal(strtemp_, heroSprites_[proActual_], f, g);
+            if (!victoryActive_ && !gameOverActive_)
+                showHeal(strtemp_, heroSprites_[proActual_], f, g);
         }
     }
 
@@ -884,6 +902,18 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
         const int vx = (320 - vw) / 2 + shakeX;
         const int vy = (200 - vh) / 2;
         f.putstrScaled(g.pv2, vx, vy, "VICTORY", g, 0, vcol, 3);
+
+        // Pulsing "press any key" prompt — shown after 500 ms grace period
+        if ((nowMs - victoryStartMs_) >= 500) {
+            constexpr const char *kPrompt = "PRESIONE CUALQUIER TECLA PARA CONTINUAR...";
+            const float pt      = elapsed;
+            const float ppulse  = 0.5f * (std::sinf(pt * 7.0f) + 1.0f);
+            const int   pbounce = static_cast<int>(std::sinf(pt * 4.0f) * 2.0f);
+            const unsigned char pcol = (ppulse > 0.5f) ? 15 : 46; // white / yellow
+            const int px = (320 - 42 * 6) / 2;
+            const int py = vy + vh + 15 + pbounce;
+            f.putstr(g.pv2, px, py, kPrompt, g, 0, pcol);
+        }
     }
 
     // 8. Game Over overlay
@@ -906,6 +936,18 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
         const int gox = (320 - gow) / 2 + goShakeX;
         const int goy = (200 - goh) / 2;
         f.putstrScaled(g.pv2, gox, goy, "GAME OVER", g, 0, gocol, 3);
+
+        // Pulsing "press any key" prompt — shown after 500 ms grace period
+        if ((nowMs - gameOverStartMs_) >= 500) {
+            constexpr const char *kPrompt = "PRESIONE CUALQUIER TECLA PARA CONTINUAR...";
+            const float gpt      = goElapsed;
+            const float gppulse  = 0.5f * (std::sinf(gpt * 7.0f) + 1.0f);
+            const int   gpbounce = static_cast<int>(std::sinf(gpt * 4.0f) * 2.0f);
+            const unsigned char gpcol = (gppulse > 0.5f) ? 15 : 46; // white / yellow
+            const int gpx = (320 - 42 * 6) / 2;
+            const int gpy = goy + goh + 15 + gpbounce;
+            f.putstr(g.pv2, gpx, gpy, kPrompt, g, 0, gpcol);
+        }
     }
 }
 

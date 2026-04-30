@@ -854,6 +854,11 @@ int main(int argc, char **argv) {
     battle.load();
     bool battleMode = false;
     bool prevB = false;
+    bool prevBattleVictory  = false; // edge-detect: victory music trigger
+    bool prevBattleGameOver = false; // edge-detect: game over music trigger
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+    Mix_Music *battleEndMusic = nullptr; // victorySong / gameOverSong handle
+#endif
 
     // Battle-entry transition — pixel dissolve (black → battle bg)
     // Phase 0 = inactive, 1 = dissolve running
@@ -1207,11 +1212,47 @@ int main(int argc, char **argv) {
             graph.clearOverlay();
             battle.update(keys, static_cast<std::uint32_t>(SDL_GetTicks()));
             battle.draw(graph, font, static_cast<std::uint32_t>(SDL_GetTicks()));
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+            // Switch to victorySong / gameOverSong on the first frame they activate
+            if (battle.isVictoryActive() && !prevBattleVictory) {
+                Mix_HaltMusic();
+                if (battleEndMusic) { Mix_FreeMusic(battleEndMusic); battleEndMusic = nullptr; }
+                const std::string vPath = firstExistingPath({
+                    "sound/music/victorySong.mp3",
+                    "port/sound/music/victorySong.mp3",
+                    "../port/sound/music/victorySong.mp3",
+                    "../sound/music/victorySong.mp3"
+                });
+                if (!vPath.empty()) {
+                    battleEndMusic = Mix_LoadMUS(vPath.c_str());
+                    if (battleEndMusic) Mix_PlayMusic(battleEndMusic, -1);
+                }
+            }
+            if (battle.isGameOverActive() && !prevBattleGameOver) {
+                Mix_HaltMusic();
+                if (battleEndMusic) { Mix_FreeMusic(battleEndMusic); battleEndMusic = nullptr; }
+                const std::string goPath = firstExistingPath({
+                    "sound/music/gameOverSong.mp3",
+                    "port/sound/music/gameOverSong.mp3",
+                    "../port/sound/music/gameOverSong.mp3",
+                    "../sound/music/gameOverSong.mp3"
+                });
+                if (!goPath.empty()) {
+                    battleEndMusic = Mix_LoadMUS(goPath.c_str());
+                    if (battleEndMusic) Mix_PlayMusic(battleEndMusic, -1);
+                }
+            }
+            prevBattleVictory  = battle.isVictoryActive();
+            prevBattleGameOver = battle.isGameOverActive();
+#endif
             if (battle.wantsExit()) {
                 battleMode = false;
+                prevBattleVictory  = false;
+                prevBattleGameOver = false;
 #if defined(THENDORIA_HAVE_SDL_MIXER)
                 {
                     Mix_HaltMusic();
+                    if (battleEndMusic) { Mix_FreeMusic(battleEndMusic); battleEndMusic = nullptr; }
                     if (exploreMusic) {
                         if (Mix_PlayMusic(exploreMusic, -1) != 0) {
                             std::cerr << "Mix_PlayMusic resume failed: " << Mix_GetError() << '\n';
@@ -1223,8 +1264,11 @@ int main(int argc, char **argv) {
             if (battle.wantsRestart()) {
                 // Game Over — restart from intro screen
                 battleMode = false;
+                prevBattleVictory  = false;
+                prevBattleGameOver = false;
 #if defined(THENDORIA_HAVE_SDL_MIXER)
                 Mix_HaltMusic();
+                if (battleEndMusic) { Mix_FreeMusic(battleEndMusic); battleEndMusic = nullptr; }
 #endif
                 battle.reset();
                 battle.load();

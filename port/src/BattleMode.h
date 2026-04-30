@@ -61,6 +61,8 @@ public:
     // True after the player presses 'E' to leave the battle.
     bool wantsExit() const { return wantsExit_; }
     bool wantsRestart() const { return wantsRestart_; }
+    bool isVictoryActive() const { return victoryActive_; }
+    bool isGameOverActive() const { return gameOverActive_; }
 
     // Read-only access to the loaded background pixels (ARGB, 320×200).
     const std::vector<std::uint32_t>& getBgPixels() const { return bgPixels_; }
@@ -108,6 +110,7 @@ private:
     // Previous-frame key states for edge detection
     bool prevUp_, prevDown_, prevLeft_, prevRight_;
     bool prevSpace_, prevEnter_, prevE_;
+    bool prevAnyKey_; // for victory / game-over "press any key" detection
 
     std::mt19937 rng_;
     bool wantsExit_;
