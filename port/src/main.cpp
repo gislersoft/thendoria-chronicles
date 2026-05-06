@@ -196,6 +196,7 @@ struct LaunchOptions {
     bool filterGameboy = false;
     bool filterGrid    = false;
     bool debugMode = false;
+    bool fullscreen = false;
     std::string mapName;
     int startX = 0;
     int startY = 0;
@@ -286,6 +287,10 @@ LaunchOptions parseLaunchOptions(int argc, char **argv) {
         } else if (key == "debug") {
             if (toLower(value) == "true") {
                 options.debugMode = true;
+            }
+        } else if (key == "fullscreen") {
+            if (value.empty() || toLower(value) == "true" || value == "1") {
+                options.fullscreen = true;
             }
         }
     }
@@ -558,13 +563,15 @@ int main(int argc, char **argv) {
         }
     }
 
+    const Uint32 windowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI |
+        (launchOptions.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
     SDL_Window *window = SDL_CreateWindow(
         "Thendoria Chronicles",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
         960,
         600,
-        SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI
+        windowFlags
     );
 
     if (!window) {
