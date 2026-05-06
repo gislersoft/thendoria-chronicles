@@ -426,6 +426,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="C:\TURBOC3\SRC\port\src\main.cpp" />
+    <ClCompile Include="C:\TURBOC3\SRC\port\src\InputHandler.cpp" />
     <ClCompile Include="C:\TURBOC3\SRC\port\src\Renderer320x200.cpp" />
     <ClCompile Include="C:\TURBOC3\SRC\port\src\GraphCompat.cpp" />
     <ClCompile Include="C:\TURBOC3\SRC\port\src\SpriteCompat.cpp" />

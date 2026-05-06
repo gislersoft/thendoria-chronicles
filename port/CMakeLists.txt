@@ -10,6 +10,7 @@ find_package(SDL2_mixer CONFIG QUIET)
 
 add_executable(thendoria_port
     src/main.cpp
+    src/InputHandler.cpp
     src/Renderer320x200.cpp
     src/GraphCompat.cpp
     src/SpriteCompat.cpp

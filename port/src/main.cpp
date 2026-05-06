@@ -4,6 +4,7 @@
 #endif
 
 #include "GraphCompat.h"
+#include "InputHandler.h"
 #include "FontCompat.h"
 #include "MapData.h"
 #include "SpriteCompat.h"
@@ -541,7 +542,7 @@ int main(int argc, char **argv) {
 
     const std::uint32_t appLaunchTicks = SDL_GetTicks();
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_JOYSTICK) != 0) {
         std::cerr << "SDL_Init failed: " << SDL_GetError() << '\n';
         return 1;
     }
@@ -881,12 +882,15 @@ int main(int argc, char **argv) {
     std::vector<std::uint32_t>  btMixPx;    // working composite
     SDL_Texture  *btMixTex    = nullptr;     // streaming texture for composite
 
+    InputHandler inputHandler;
+
     bool running = true;
     while (running) {
         const std::uint64_t frameStartMs = SDL_GetTicks64();
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
+            inputHandler.handleEvent(event);
             if (event.type == SDL_QUIT) {
                 running = false;
             }
@@ -895,12 +899,16 @@ int main(int argc, char **argv) {
             }
         }
 
-        const std::uint8_t *keys = SDL_GetKeyboardState(nullptr);
-        const bool pressedSpace = keys[SDL_SCANCODE_SPACE] != 0;
-        const bool pressedEnter = keys[SDL_SCANCODE_RETURN] != 0;
+        const InputSnapshot input = inputHandler.poll();
+        if (input.quit) {
+            running = false;
+        }
 
-        // 'B' enters battle mode from gameplay (starts the entry transition)
-        const bool pressedB = keys[SDL_SCANCODE_B] != 0;
+        const bool pressedSpace = input.action;
+        const bool pressedEnter = input.confirm;
+
+        // 'B' / joystick button 2 enters battle mode (starts the entry transition)
+        const bool pressedB = input.battle;
         if (pressedB && !prevB && !battleMode && !btPhase && !dialogo && !scroll) {
             battle.setMapName(currentMapBaseName);
 
@@ -1021,16 +1029,16 @@ int main(int argc, char **argv) {
             int tx = xpos_actual;
             int ty = ypos_actual;
 
-            if (keys[SDL_SCANCODE_UP]) {
+            if (input.up) {
                 brujula = DIR_NORTE;
                 ty = ypos_actual - 1;
-            } else if (keys[SDL_SCANCODE_RIGHT]) {
+            } else if (input.right) {
                 brujula = DIR_ESTE;
                 tx = xpos_actual + 1;
-            } else if (keys[SDL_SCANCODE_DOWN]) {
+            } else if (input.down) {
                 brujula = DIR_SUR;
                 ty = ypos_actual + 1;
-            } else if (keys[SDL_SCANCODE_LEFT]) {
+            } else if (input.left) {
                 brujula = DIR_OESTE;
                 tx = xpos_actual - 1;
             }
@@ -1221,7 +1229,21 @@ int main(int argc, char **argv) {
         // ---- Battle mode: full-screen turn-based combat ----
         if (battleMode) {
             graph.clearOverlay();
-            battle.update(keys, static_cast<std::uint32_t>(SDL_GetTicks()));
+            // Build a synthetic key array that merges keyboard + joystick state
+            // so BattleMode can be driven by either input device.
+            {
+                static std::array<Uint8, SDL_NUM_SCANCODES> battleKeys;
+                const Uint8 *kbdKeys = SDL_GetKeyboardState(nullptr);
+                std::copy(kbdKeys, kbdKeys + SDL_NUM_SCANCODES, battleKeys.begin());
+                if (input.up)      battleKeys[SDL_SCANCODE_UP]     = 1;
+                if (input.down)    battleKeys[SDL_SCANCODE_DOWN]   = 1;
+                if (input.left)    battleKeys[SDL_SCANCODE_LEFT]   = 1;
+                if (input.right)   battleKeys[SDL_SCANCODE_RIGHT]  = 1;
+                if (input.action)  battleKeys[SDL_SCANCODE_SPACE]  = 1;
+                if (input.confirm) battleKeys[SDL_SCANCODE_RETURN] = 1;
+                if (input.back)    battleKeys[SDL_SCANCODE_E]      = 1;
+                battle.update(battleKeys.data(), static_cast<std::uint32_t>(SDL_GetTicks()));
+            }
             battle.draw(graph, font, static_cast<std::uint32_t>(SDL_GetTicks()));
 #if defined(THENDORIA_HAVE_SDL_MIXER)
             // Switch to victorySong / gameOverSong on the first frame they activate

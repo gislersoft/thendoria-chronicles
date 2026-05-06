@@ -4,6 +4,9 @@
     <ClCompile Include="C:\TURBOC3\SRC\port\src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="C:\TURBOC3\SRC\port\src\InputHandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="C:\TURBOC3\SRC\port\src\Renderer320x200.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
