@@ -822,12 +822,25 @@ int main(int argc, char **argv) {
     const std::string musicFileName = (mapFirstChar == 'C') ? "CastleKeyLoop.mp3"
                                     : (mapFirstChar == 'D') ? "DungeonLoop.mp3"
                                     : "exploreMusic.mp3";
+    // --- DEBUG: music diagnostics ---
+    std::cout << "[MUSIC-DBG] cwd            : " << std::filesystem::current_path().string() << '\n';
+    std::cout << "[MUSIC-DBG] musicFileName  : " << musicFileName << '\n';
+    for (const std::string &candidate : {
+            "sound/music/" + musicFileName,
+            "port/sound/music/" + musicFileName,
+            "../port/sound/music/" + musicFileName,
+            "../sound/music/" + musicFileName}) {
+        std::cout << "[MUSIC-DBG]   candidate: " << candidate
+                  << "  exists=" << std::filesystem::exists(candidate) << '\n';
+    }
+
     const std::string exploreMusicPath = firstExistingPath({
         "sound/music/" + musicFileName,
         "port/sound/music/" + musicFileName,
         "../port/sound/music/" + musicFileName,
         "../sound/music/" + musicFileName
     });
+    std::cout << "[MUSIC-DBG] resolved path  : \"" << exploreMusicPath << "\"\n";
 
     if (!exploreMusicPath.empty()) {
         int freq = 0;
@@ -837,22 +850,29 @@ int main(int argc, char **argv) {
             const int    audioFreq     = launchOptions.filterGameboy ? 32768 : 44100;
             const Uint16 audioFormat   = launchOptions.filterGameboy ? AUDIO_U8 : MIX_DEFAULT_FORMAT;
             const int    audioChannels = launchOptions.filterGameboy ? 1 : 2;
+            std::cout << "[MUSIC-DBG] Mix_OpenAudio  freq=" << audioFreq
+                      << " channels=" << audioChannels << '\n';
             if (Mix_OpenAudio(audioFreq, audioFormat, audioChannels, 1024) != 0) {
-                std::cerr << "Mix_OpenAudio failed for gameplay music: " << Mix_GetError() << '\n';
+                std::cerr << "[MUSIC-DBG] Mix_OpenAudio FAILED: " << Mix_GetError() << '\n';
             } else if (launchOptions.filterGameboy) {
                 IntroScreen::setupGameboyPostMix();
             }
+        } else {
+            std::cout << "[MUSIC-DBG] Audio already open: freq=" << freq
+                      << " channels=" << channels << '\n';
         }
 
         if (Mix_QuerySpec(&freq, &format, &channels) != 0) {
+            std::cout << "[MUSIC-DBG] Loading: " << exploreMusicPath << '\n';
             exploreMusic = Mix_LoadMUS(exploreMusicPath.c_str());
             if (!exploreMusic) {
-                std::cerr << "Mix_LoadMUS failed for " << exploreMusicPath << ": " << Mix_GetError() << '\n';
+                std::cerr << "[MUSIC-DBG] Mix_LoadMUS FAILED: " << Mix_GetError() << '\n';
             } else if (Mix_PlayMusic(exploreMusic, -1) != 0) {
-                std::cerr << "Mix_PlayMusic failed for gameplay music: " << Mix_GetError() << '\n';
+                std::cerr << "[MUSIC-DBG] Mix_PlayMusic FAILED: " << Mix_GetError() << '\n';
                 Mix_FreeMusic(exploreMusic);
                 exploreMusic = nullptr;
             } else {
+                std::cout << "[MUSIC-DBG] Music playing OK\n";
                 currentMusicFileName = musicFileName;
             }
         }
