@@ -4,6 +4,9 @@
 #include "GraphCompat.h"
 #include "FontCompat.h"
 #include <SDL.h>
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+#include <SDL_mixer.h>
+#endif
 #include <string>
 #include <cstdint>
 #include <vector>
@@ -51,7 +54,7 @@ private:
     std::uint32_t appLaunchTicks_ = 0;
 #if defined(THENDORIA_HAVE_SDL_MIXER)
     bool mixerReady_ = false;
-    struct Mix_Music *introMusic_ = nullptr;
+    Mix_Music *introMusic_ = nullptr;
 #endif
 };
 
