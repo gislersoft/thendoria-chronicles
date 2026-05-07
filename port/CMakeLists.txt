@@ -47,7 +47,13 @@ target_link_libraries(thendoria_port PRIVATE SDL2::SDL2 SDL2::SDL2main SDL2_imag
 target_link_libraries(thendoria_map_editor PRIVATE SDL2::SDL2 SDL2::SDL2main SDL2_image::SDL2_image)
 
 if(SDL2_mixer_FOUND)
-    target_link_libraries(thendoria_port PRIVATE $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
+    if(TARGET SDL2_mixer::SDL2_mixer)
+        target_link_libraries(thendoria_port PRIVATE SDL2_mixer::SDL2_mixer)
+    elseif(TARGET SDL2_mixer::SDL2_mixer-static)
+        target_link_libraries(thendoria_port PRIVATE SDL2_mixer::SDL2_mixer-static)
+    elseif(DEFINED SDL2_MIXER_LIBRARIES)
+        target_link_libraries(thendoria_port PRIVATE ${SDL2_MIXER_LIBRARIES})
+    endif()
     target_compile_definitions(thendoria_port PRIVATE THENDORIA_HAVE_SDL_MIXER=1)
 endif()
 
