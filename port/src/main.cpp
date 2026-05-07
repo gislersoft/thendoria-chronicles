@@ -542,6 +542,13 @@ int main(int argc, char **argv) {
 
     const std::uint32_t appLaunchTicks = SDL_GetTicks();
 
+#if defined(THENDORIA_HAVE_SDL_MIXER)
+    std::cout << "[AUDIO-DBG] SDL_mixer support: COMPILED IN\n";
+#else
+    std::cerr << "[AUDIO-DBG] SDL_mixer support: NOT COMPILED IN — musica deshabilitada.\n";
+    std::cerr << "[AUDIO-DBG] Instala libsdl2-mixer-dev y recompila con: cmake -DCMAKE_BUILD_TYPE=Release ..\n";
+#endif
+
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_JOYSTICK) != 0) {
         std::cerr << "SDL_Init failed: " << SDL_GetError() << '\n';
         return 1;

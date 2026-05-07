@@ -288,6 +288,7 @@ bool IntroScreen::startIntroMusic(const std::string &path) {
     introMusicPlaying_ = true;
     return true;
 #else
+    std::cerr << "[AUDIO-DBG] startIntroMusic(\"" << path << "\") — SDL_mixer no compilado, musica no disponible.\n";
     (void)path;
     return false;
 #endif
