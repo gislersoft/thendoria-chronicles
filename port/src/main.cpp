@@ -1269,7 +1269,8 @@ int main(int argc, char **argv) {
                 if (input.action)  battleKeys[SDL_SCANCODE_SPACE]  = 1;
                 if (input.confirm) battleKeys[SDL_SCANCODE_RETURN] = 1;
                 if (input.back)    battleKeys[SDL_SCANCODE_E]      = 1;
-                battle.update(battleKeys.data(), static_cast<std::uint32_t>(SDL_GetTicks()));
+                battle.update(battleKeys.data(), static_cast<std::uint32_t>(SDL_GetTicks()),
+                              input.anyButton, inputHandler.hasJoystick());
             }
             battle.draw(graph, font, static_cast<std::uint32_t>(SDL_GetTicks()));
 #if defined(THENDORIA_HAVE_SDL_MIXER)

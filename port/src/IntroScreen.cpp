@@ -320,6 +320,10 @@ void IntroScreen::waitForKey(bool anyKey) {
                     break;
                 }
             }
+            if (event.type == SDL_JOYBUTTONDOWN) {
+                waiting = false;
+                break;
+            }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
@@ -433,7 +437,10 @@ void IntroScreen::showIntroScreen(GraphCompat &graph, FontCompat &font, SDL_Rend
 
     fadeIn(graph, 25);
 
-    const char *prompt = "PRESIONE CUALQUIER TECLA PARA CONTINUAR...";
+    const bool joystickPresent = SDL_NumJoysticks() > 0;
+    const char *prompt = joystickPresent
+        ? "PRESIONE CUALQUIER BOTON PARA CONTINUAR..."
+        : "PRESIONE CUALQUIER TECLA PARA CONTINUAR...";
     const std::uint32_t introStartTicks = SDL_GetTicks();
     std::uint32_t lastDirectionChangeTicks = introStartTicks;
     bool waiting = true;
@@ -460,6 +467,10 @@ void IntroScreen::showIntroScreen(GraphCompat &graph, FontCompat &font, SDL_Rend
                 if (event.key.keysym.sym == SDLK_ESCAPE) {
                     exit(0);
                 }
+                waiting = false;
+                break;
+            }
+            if (event.type == SDL_JOYBUTTONDOWN) {
                 waiting = false;
                 break;
             }

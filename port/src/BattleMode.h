@@ -51,7 +51,7 @@ public:
     void reset();
 
     // Process input + advance the state machine (call every frame).
-    void update(const std::uint8_t *keys, std::uint32_t nowMs);
+    void update(const std::uint8_t *keys, std::uint32_t nowMs, bool joyAnyButton = false, bool hasJoystick = false);
 
     // Render the battle scene into g's buffers.
     // Writes background + sprites to the RGBA overlay and UI to pv2.
@@ -110,7 +110,8 @@ private:
     // Previous-frame key states for edge detection
     bool prevUp_, prevDown_, prevLeft_, prevRight_;
     bool prevSpace_, prevEnter_, prevE_;
-    bool prevAnyKey_; // for victory / game-over "press any key" detection
+    bool prevAnyKey_;   // for victory / game-over "press any key" detection
+    bool hasJoystick_;  // true if a joystick is connected (affects prompt text)
 
     std::mt19937 rng_;
     bool wantsExit_;

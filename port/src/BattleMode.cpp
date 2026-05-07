@@ -333,6 +333,7 @@ void BattleMode::reset() {
     prevUp_ = prevDown_ = prevLeft_ = prevRight_ = false;
     prevSpace_ = prevEnter_ = prevE_ = false;
     prevAnyKey_   = false;
+    hasJoystick_  = false;
     wantsExit_ = false;
     wantsRestart_ = false;
 
@@ -362,7 +363,8 @@ void BattleMode::reset() {
 // BattleMode::update — input + state machine (one call per frame)
 // ---------------------------------------------------------------------------
 
-void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
+void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs, bool joyAnyButton, bool hasJoystick) {
+    hasJoystick_ = hasJoystick;
 
     // --- Exit key (always active, even during stripe wipe) ---
     const bool pressE = keys[SDL_SCANCODE_E] != 0;
@@ -375,9 +377,11 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
     // --- Victory: wait for any key press (after 500 ms grace period) ---
     if (victoryActive_) {
         if (victoryStartMs_ != 0 && (nowMs - victoryStartMs_) >= 500) {
-            const bool pressAny = (keys[SDL_SCANCODE_SPACE]  != 0) ||
+            const bool pressAny = joyAnyButton ||
+                                  (keys[SDL_SCANCODE_SPACE]  != 0) ||
                                   (keys[SDL_SCANCODE_RETURN] != 0) ||
                                   (keys[SDL_SCANCODE_Z]      != 0) ||
+                                  (keys[SDL_SCANCODE_X]      != 0);
                                   (keys[SDL_SCANCODE_X]      != 0);
             if (pressAny && !prevAnyKey_) {
                 wantsExit_ = true;
@@ -390,7 +394,8 @@ void BattleMode::update(const std::uint8_t *keys, std::uint32_t nowMs) {
     // --- Game Over: wait for any key press (after 500 ms grace period) ---
     if (gameOverActive_) {
         if (gameOverStartMs_ != 0 && (nowMs - gameOverStartMs_) >= 500) {
-            const bool pressAny = (keys[SDL_SCANCODE_SPACE]  != 0) ||
+            const bool pressAny = joyAnyButton ||
+                                  (keys[SDL_SCANCODE_SPACE]  != 0) ||
                                   (keys[SDL_SCANCODE_RETURN] != 0) ||
                                   (keys[SDL_SCANCODE_Z]      != 0) ||
                                   (keys[SDL_SCANCODE_X]      != 0);
@@ -905,7 +910,9 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
 
         // Pulsing "press any key" prompt — shown after 500 ms grace period
         if ((nowMs - victoryStartMs_) >= 500) {
-            constexpr const char *kPrompt = "PRESIONE CUALQUIER TECLA PARA CONTINUAR...";
+            const char *kPrompt = hasJoystick_
+                ? "PRESIONE CUALQUIER BOTON PARA CONTINUAR..."
+                : "PRESIONE CUALQUIER TECLA PARA CONTINUAR...";
             const float pt      = elapsed;
             const float ppulse  = 0.5f * (std::sinf(pt * 7.0f) + 1.0f);
             const int   pbounce = static_cast<int>(std::sinf(pt * 4.0f) * 2.0f);
@@ -939,7 +946,9 @@ void BattleMode::draw(GraphCompat &g, FontCompat &f, std::uint32_t nowMs) {
 
         // Pulsing "press any key" prompt — shown after 500 ms grace period
         if ((nowMs - gameOverStartMs_) >= 500) {
-            constexpr const char *kPrompt = "PRESIONE CUALQUIER TECLA PARA CONTINUAR...";
+            const char *kPrompt = hasJoystick_
+                ? "PRESIONE CUALQUIER BOTON PARA CONTINUAR..."
+                : "PRESIONE CUALQUIER TECLA PARA CONTINUAR...";
             const float gpt      = goElapsed;
             const float gppulse  = 0.5f * (std::sinf(gpt * 7.0f) + 1.0f);
             const int   gpbounce = static_cast<int>(std::sinf(gpt * 4.0f) * 2.0f);

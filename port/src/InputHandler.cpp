@@ -97,6 +97,9 @@ InputSnapshot InputHandler::poll() const {
     s.back    = s.back    || joyBack_;
     s.battle  = s.battle  || joyBattle_;
     s.quit    = s.quit    || joyQuit_;
+    s.anyButton = joyAnyButton_;
+    // anyButton is a pulse — clear it after reading so it's only true for one frame
+    const_cast<InputHandler *>(this)->joyAnyButton_ = false;
 
     return s;
 }
@@ -137,11 +140,12 @@ void InputHandler::resetJoyState() {
     joyDown_   = false;
     joyLeft_   = false;
     joyRight_  = false;
-    joyAction_  = false;
-    joyConfirm_ = false;
-    joyBack_    = false;
-    joyBattle_  = false;
-    joyQuit_    = false;
+    joyAction_    = false;
+    joyConfirm_   = false;
+    joyBack_      = false;
+    joyBattle_    = false;
+    joyQuit_      = false;
+    joyAnyButton_ = false;
 }
 
 void InputHandler::applyHat(Uint8 hatVal) {
@@ -173,5 +177,8 @@ void InputHandler::applyButton(int button, bool pressed) {
         case 6: joyQuit_    = pressed; break;  // Start                  → quit
         case 7: joyQuit_    = pressed; break;  // Select / back          → quit
         default: break;
+    }
+    if (pressed) {
+        joyAnyButton_ = true;
     }
 }

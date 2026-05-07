@@ -7,15 +7,16 @@
 // True means "currently held / active this frame".
 // ---------------------------------------------------------------------------
 struct InputSnapshot {
-    bool up      = false;  // move north
-    bool down    = false;  // move south
-    bool left    = false;  // move west
-    bool right   = false;  // move east
-    bool action  = false;  // interact / SPACE       / joystick button 0
-    bool confirm = false;  // advance dialog / ENTER / joystick button 1
-    bool back    = false;  // exit battle / E        / joystick button 3
-    bool battle  = false;  // trigger battle / B     / joystick button 2
-    bool quit    = false;  // exit / ESC             / joystick button 6 or 7
+    bool up        = false;  // move north
+    bool down      = false;  // move south
+    bool left      = false;  // move west
+    bool right     = false;  // move east
+    bool action    = false;  // interact / SPACE       / joystick button 0
+    bool confirm   = false;  // advance dialog / ENTER / joystick button 1
+    bool back      = false;  // exit battle / E        / joystick button 3
+    bool battle    = false;  // trigger battle / B     / joystick button 2
+    bool quit      = false;  // exit / ESC             / joystick button 6 or 7
+    bool anyButton = false;  // any joystick button pressed this frame
 };
 
 // ---------------------------------------------------------------------------
@@ -52,6 +53,9 @@ public:
     // Call once per frame, after all events have been processed.
     InputSnapshot poll() const;
 
+    // True if a joystick is currently connected.
+    bool hasJoystick() const { return joy_ != nullptr; }
+
 private:
     SDL_Joystick *joy_  = nullptr;
     SDL_JoystickID joyInstanceId_ = -1;
@@ -61,11 +65,12 @@ private:
     bool joyDown_   = false;
     bool joyLeft_   = false;
     bool joyRight_  = false;
-    bool joyAction_  = false;
-    bool joyConfirm_ = false;
-    bool joyBack_    = false;
-    bool joyBattle_  = false;
-    bool joyQuit_    = false;
+    bool joyAction_    = false;
+    bool joyConfirm_   = false;
+    bool joyBack_      = false;
+    bool joyBattle_    = false;
+    bool joyQuit_      = false;
+    bool joyAnyButton_ = false;
 
     void openFirstJoystick();
     void closeJoystick();
