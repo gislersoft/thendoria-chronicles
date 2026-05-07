@@ -1052,11 +1052,7 @@ int main(int argc, char **argv) {
             }
         }
 
-        if (mapLoaded && !scroll && !dialogo) {
-            int tx = xpos_actual;
-            int ty = ypos_actual;
-
-            if (input.up) {
+        if (mapLoaded && !scroll && !dialogo && !battleMode && !btPhase) {
                 brujula = DIR_NORTE;
                 ty = ypos_actual - 1;
             } else if (input.right) {
@@ -1087,7 +1083,7 @@ int main(int argc, char **argv) {
             }
         }
 
-        if (mapLoaded && !scroll && !dialogo && justPressedSpace) {
+        if (mapLoaded && !scroll && !dialogo && !battleMode && !btPhase && justPressedSpace) {
             int tx = xpos_actual;
             int ty = ypos_actual;
             switch (brujula) {
@@ -1144,7 +1140,7 @@ int main(int argc, char **argv) {
             }
         }
 
-        if (!pendingMapPath.empty() && !scroll && !dialogo) {
+        if (!pendingMapPath.empty() && !scroll && !dialogo && !battleMode && !btPhase) {
             if (world.loadFromFile(pendingMapPath)) {
                 xpos_actual = pendingSpawnX;
                 ypos_actual = pendingSpawnY;
