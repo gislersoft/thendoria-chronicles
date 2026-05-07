@@ -78,12 +78,6 @@ IntroScreen::IntroScreen(bool monoAudio) : monoAudio_(monoAudio) {}
 
 IntroScreen::~IntroScreen() {
     stopIntroMusic();
-#if defined(THENDORIA_HAVE_SDL_MIXER)
-    if (mixerReady_) {
-        Mix_CloseAudio();
-        mixerReady_ = false;
-    }
-#endif
 }
 
 std::string IntroScreen::resolvePath(const std::string &relPath) {

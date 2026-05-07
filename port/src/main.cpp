@@ -1648,6 +1648,11 @@ int main(int argc, char **argv) {
         Mix_FreeMusic(exploreMusic);
         exploreMusic = nullptr;
     }
+    if (battleEndMusic) {
+        Mix_FreeMusic(battleEndMusic);
+        battleEndMusic = nullptr;
+    }
+    Mix_CloseAudio();
 #endif
 
     SDL_DestroyRenderer(renderer);
